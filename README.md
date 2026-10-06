@@ -1,19 +1,42 @@
-# React + Vite
+# Yakarta — React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Conversión del proyecto HTML original a una SPA en React con JavaScript, React Compiler, Bootstrap instalado como dependencia y Oxlint.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 20+
+- npm 10+
 
-## React Compiler
+## Instalación
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+```bash
+npm install
+```
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+## Desarrollo
 
-## Expanding the Oxlint configuration
+```bash
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Producción
+
+```bash
+npm run build
+npm run preview
+```
+
+## Linter
+
+```bash
+npm run lint
+npm run lint:fix
+```
+
+## Notas
+
+- Bootstrap y Bootstrap Icons se importan desde npm; se eliminaron las referencias CDN del HTML original.
+- React Router reemplaza los enlaces `.html` por rutas de la SPA.
+- Los flujos de login, registro, carrito, checkout, compras y administración se migraron a estado React + `localStorage`.
+- React Compiler se habilita desde `vite.config.js` mediante `@vitejs/plugin-react` y `babel-plugin-react-compiler`.
+- Oxlint es el linter principal del proyecto.
