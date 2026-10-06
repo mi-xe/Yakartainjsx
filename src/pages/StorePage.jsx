@@ -5,6 +5,7 @@ import { formatCLP, readStorage, writeStorage } from '../lib/storage';
 
 export default function StorePage() {
   const navigate = useNavigate();
+  const [successMessage, setSuccessMessage] = useState('');
   const [products, setProducts] = useState(() => {
     const saved = readStorage('productosTienda', null);
     return saved?.length ? saved : defaultProducts;
@@ -18,11 +19,23 @@ export default function StorePage() {
     if (existing) existing.cantidad += 1;
     else cart.push({ ...product, cantidad: 1 });
     writeStorage('carrito', cart);
-    alert(`${product.nombre} se agregó exitosamente al carrito`);
+    setSuccessMessage(`${product.nombre} se agregó exitosamente al carrito.`);
   }
 
   return (
     <div className="container text-center my-4">
+      {successMessage && (
+        <div className="alert alert-success alert-dismissible fade show text-start" role="alert">
+          <i className="bi bi-check-circle me-2" aria-hidden="true"></i>
+          {successMessage}
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Cerrar mensaje"
+            onClick={() => setSuccessMessage('')}
+          ></button>
+        </div>
+      )}
       <div className="row align-items-stretch">
         {products.map((product) => (
           <div className="col-md-4 mb-4" key={product.id ?? product.nombre}>

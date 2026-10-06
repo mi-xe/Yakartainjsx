@@ -9,7 +9,7 @@ export default function MidnightClubPage() {
 <div className="col 1">
 <h1>Volkswagen Golf GTI</h1>
 <h5>Este modelo en concreto es el primero de la lista del expositor de vehículos y el más barato de todos.
-En las carreras en modo "fácil" si elijes un vehículo de la clase D es muy probable que lo encuentres entre los rivales.</h5>
+                En las carreras en modo "fácil" si elijes un vehículo de la clase D es muy probable que lo encuentres entre los rivales.</h5>
 </div>
 <div className="col 2">
 <img src="/img/volkswagenminiatura.webp" alt="" style={{width: "100%", height: "100%"}} />
