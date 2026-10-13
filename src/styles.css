@@ -58,7 +58,12 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     }
 
-
+.navbar a {
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+  color: white;
+  font-weight: bold;
+}
 
 
 body{
@@ -70,6 +75,7 @@ body{
 
 
 p {
+    font-family:'Gill Sans', 'Gill Sans MT', 'Trebuchet MS', sans-serif;
     color: white;
 }
 

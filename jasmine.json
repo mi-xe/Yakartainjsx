@@ -1,0 +1,6 @@
+{
+  "spec_dir": ".",
+  "spec_files": ["src/components/__tests__/**/*.spec.cjs"],
+  "helpers": ["test/setup.cjs"],
+  "random": false
+}
