@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-
+/** Formulario pequeño que demuestra la actualización del estado al escribir. */
 export default function FormularioPrueba() {
   const [texto, setTexto] = useState('');
 

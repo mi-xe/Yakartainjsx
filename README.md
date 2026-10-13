@@ -1,42 +1,40 @@
-# Yakarta — React + Vite
+# Yakarta
 
-Conversión del proyecto HTML original a una SPA en React con JavaScript, React Compiler, Bootstrap instalado como dependencia y Oxlint.
+Tienda web de juegos físicos creada con React, Vite y Bootstrap.
 
-## Requisitos
-
-- Node.js 20+
-- npm 10+
-
-## Instalación
+## Iniciar el proyecto
 
 ```bash
 npm install
-```
-
-## Desarrollo
-
-```bash
 npm run dev
 ```
 
-## Producción
+## Pruebas automatizadas
 
 ```bash
-npm run build
-npm run preview
+npm test
 ```
 
-## Linter
+El proyecto incluye 50 pruebas automatizadas (25 pruebas base y 25 nuevas pruebas funcionales). Están en `src/components/__tests__/componentes.spec.cjs` y se ejecutan con Jasmine y jsdom. La configuración se encuentra en `jasmine.json`; el archivo `test/setup.cjs` prepara el entorno de pruebas.
 
-```bash
-npm run lint
-npm run lint:fix
-```
+## Funcionalidades añadidas
 
-## Notas
+- Filtro de juegos por categoría y opción para mostrar solo ofertas.
+- Distintivo **¡OFERTA!** y precio rebajado para productos en promoción.
+- Saldo de cliente inicial de $0 CLP, persistente por correo durante la navegación.
+- Página `/fondos` para añadir $1.000, $2.000, $5.000 o $10.000 CLP.
+- Descuento del saldo al confirmar una compra y bloqueo de compra por saldo insuficiente.
+- Formulario de contacto que guarda solicitudes en `localStorage` (`solicitudesContacto`).
+- Alta de usuarios desde el panel administrador con contraseña que también permite iniciar sesión.
 
-- Bootstrap y Bootstrap Icons se importan desde npm; se eliminaron las referencias CDN del HTML original.
-- React Router reemplaza los enlaces `.html` por rutas de la SPA.
-- Los flujos de login, registro, carrito, checkout, compras y administración se migraron a estado React + `localStorage`.
-- React Compiler se habilita desde `vite.config.js` mediante `@vitejs/plugin-react` y `babel-plugin-react-compiler`.
-- Oxlint es el linter principal del proyecto.
+## Cuenta de acceso predeterminada
+
+En `src/pages/IniciarSesion.jsx`, dentro de la función `submit`, existe una cuenta de administrador de demostración:
+
+- Correo: `admin@tienda.com`
+- Contraseña: `123`
+- Rol: Administrador
+
+El panel `src/pages/Administracion.jsx` también muestra registros iniciales de ejemplo (`cristian@admin.com`, `juan@gmail.com`, `mixin@admin.com`), definidos en `defaultUsers`. Esos registros de demostración no traen contraseña definida y, por sí solos, no son credenciales de inicio de sesión. Para que un usuario creado desde el panel pueda entrar, asigna una contraseña en el formulario **Nuevo Usuario**.
+
+> Esta aplicación es una demostración front-end: las cuentas, contraseñas, saldos y solicitudes se guardan en `localStorage` del navegador. No es un sistema de autenticación o pagos seguro para producción; en una aplicación real, las contraseñas y los saldos deben gestionarse en un servidor.

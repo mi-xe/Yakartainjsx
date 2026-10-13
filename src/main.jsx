@@ -22,6 +22,7 @@ import IniciarSesion from './pages/IniciarSesion';
 import Registro from './pages/Registro';
 import Resumen from './pages/Resumen';
 import Administracion from './pages/Administracion';
+import Fondos from './pages/Fondos';
 
 function Layout({ children }) {
   return <PageLayout>{children}</PageLayout>;
@@ -42,6 +43,7 @@ function App() {
         <Route path="/midnight-club" element={<Routed component={<MidnightClub />} />} />
         <Route path="/somos" element={<Routed component={<Nosotros />} />} />
         <Route path="/tienda" element={<Routed component={<Tienda />} />} />
+        <Route path="/fondos" element={<Routed component={<Fondos />} />} />
         <Route path="/carrito" element={<Routed component={<Carrito />} layout={false} />} />
         <Route path="/compras" element={<Routed component={<Compras />} />} />
         <Route path="/contactanos" element={<Routed component={<Contacto />} />} />

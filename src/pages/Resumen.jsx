@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatCLP, readStorage, writeStorage } from '../lib/storage';
+import { formatCLP, getCustomerBalance, readStorage, setCustomerBalance, writeStorage } from '../lib/storage';
 
 export default function Resumen() {
   const navigate = useNavigate();
@@ -19,6 +19,11 @@ export default function Resumen() {
       setMessage({ type: 'empty', text: 'Tu carrito está vacío. Agrega al menos un producto antes de continuar.' });
       return;
     }
+    if (user.rol === 'Cliente' && getCustomerBalance(user.email) < total) {
+      setMessage({ type: 'funds', text: `Tu saldo (${formatCLP(getCustomerBalance(user.email))}) no alcanza para pagar ${formatCLP(total)}. Agrega fondos para continuar.` });
+      return;
+    }
+    if (user.rol === 'Cliente') setCustomerBalance(user.email, getCustomerBalance(user.email) - total);
     const order = { id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`, usuarioEmail: user.email || user.nombre, fecha: new Date().toISOString().split('T')[0], total, estado: 'Entregado', productos: cart.map(({ nombre, precio, cantidad }) => ({ nombre, precio, cantidad })) };
     const history = readStorage('historialCompras', []);
     history.unshift(order);
@@ -39,14 +44,13 @@ export default function Resumen() {
         >
           <i className={`bi ${message.type === 'login' ? 'bi-person-lock' : 'bi-cart-x'} fs-3`} aria-hidden="true" />
           <div className="flex-grow-1">
-            <strong>{message.type === 'login' ? '¡Un último paso!' : 'Tu carrito necesita atención'}</strong>
+            <strong>{message.type === 'login' ? '¡Un último paso!' : message.type === 'funds' ? 'Saldo insuficiente' : 'Tu carrito necesita atención'}</strong>
             <div>{message.text}</div>
           </div>
           {message.type === 'login' && (
-            <Link to="/login" className="btn btn-dark fw-bold">
-              Iniciar sesión
-            </Link>
+            <Link to="/login" className="btn btn-dark fw-bold">Iniciar sesión</Link>
           )}
+          {message.type === 'funds' && <Link to="/fondos" className="btn btn-dark fw-bold">Agregar fondos</Link>}
           {message.type === 'empty' && (
             <Link to="/tienda" className="btn btn-primary fw-bold">
               Ver tienda

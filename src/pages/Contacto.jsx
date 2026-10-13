@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { readStorage, writeStorage } from '../lib/storage';
+
 const emptyForm = { email: '', nombre: '', telefono: '', comentario: '' };
 
 export default function Contacto() {
@@ -13,6 +15,9 @@ export default function Contacto() {
 
   function submit(event) {
     event.preventDefault();
+    const solicitudes = readStorage('solicitudesContacto', []);
+    solicitudes.unshift({ ...form, fecha: new Date().toISOString() });
+    writeStorage('solicitudesContacto', solicitudes);
     setSubmitted(true);
     setForm(emptyForm);
   }

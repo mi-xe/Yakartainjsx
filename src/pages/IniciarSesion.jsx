@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { readStorage, writeStorage } from '../lib/storage';
+import { ensureCustomerBalance, readStorage, writeStorage } from '../lib/storage';
 
 export default function IniciarSesion() {
   const navigate = useNavigate();
@@ -23,7 +23,9 @@ export default function IniciarSesion() {
       setMessage('Correo o contraseña incorrectos.');
       return;
     }
-    writeStorage('usuarioLogueado', { nombre: found.nombre, email: found.email, rol: found.rol });
+    const normalizedEmail = found.email.trim().toLowerCase();
+    if (found.rol === 'Cliente') ensureCustomerBalance(normalizedEmail);
+    writeStorage('usuarioLogueado', { nombre: found.nombre, email: normalizedEmail, rol: found.rol });
     navigate('/');
   }
 

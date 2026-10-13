@@ -8,7 +8,7 @@ const defaultUsers = [
   { nombre: 'Mixin', email: 'mixin@admin.com', rol: 'Administrador' },
 ];
 
-const defaultCategories = ['Acción', 'Aventura', 'RPG', 'Estrategia', 'Deportes'];
+const defaultCategories = ['Acción', 'Aventura', 'RPG', 'Estrategia', 'Deportes', 'Carreras', 'Terror', 'Lucha', 'Simulación'];
 
 const defaultOrders = [
   { id: 'ORD-001', cliente: 'juan@gmail.com', fecha: '2026-03-20', total: 45000, items: [{ nombre: 'Zelda BOTW', precio: 45000, cant: 1 }] },
@@ -46,7 +46,7 @@ export default function Administracion() {
   // Gestor Productos
   function openProduct(index = null) {
     if (index === null) {
-      setProductModal({ index: null, nombre: '', precio: '', stock: 10, categoria: categories[0] || '', imagen: '' });
+      setProductModal({ index: null, nombre: '', precio: '', precioOferta: '', enOferta: false, stock: 10, categoria: categories[0] || '', imagen: '' });
     } else {
       setProductModal({ index, ...products[index] });
     }
@@ -60,6 +60,8 @@ export default function Administracion() {
     const product = {
       nombre: (form.get('nombre') || '').toString().trim(),
       precio: Number(form.get('precio')) || 0,
+      precioOferta: Number(form.get('precioOferta')) || 0,
+      enOferta: form.get('enOferta') === 'on',
       stock: Number(form.get('stock')) || 0,
       categoria: form.get('categoria') || '',
       imagen: (form.get('imagen') || '').toString().trim(),
@@ -123,7 +125,7 @@ export default function Administracion() {
   // Gestor Usuarios
   function openUser(index = null) {
     if (index === null) {
-      setUserModal({ index: null, nombre: '', email: '', rol: 'Cliente' });
+      setUserModal({ index: null, nombre: '', email: '', rol: 'Cliente', password: '' });
     } else {
       setUserModal({ index, ...users[index] });
     }
@@ -134,11 +136,21 @@ export default function Administracion() {
     if (!userModal) return;
 
     const form = new FormData(event.currentTarget);
+    const email = (form.get('email') || '').toString().trim().toLowerCase();
+    const password = (form.get('password') || '').toString();
+    const existingAccount = readStorage('usuarios', []).find((account) => account.email === (userModal?.email || '').toLowerCase());
     const user = {
       nombre: (form.get('nombre') || '').toString().trim(),
-      email: (form.get('email') || '').toString().trim(),
+      email,
       rol: form.get('rol') || 'Cliente',
+      ...(password ? { password } : existingAccount?.password ? { password: existingAccount.password } : {}),
     };
+    if (userModal.index === null && !password) return;
+    const accounts = readStorage('usuarios', []);
+    const accountIndex = accounts.findIndex((account) => account.email === (userModal?.email || '').toLowerCase() || account.email === email);
+    if (accountIndex >= 0) accounts[accountIndex] = { ...accounts[accountIndex], ...user };
+    else if (password) accounts.push(user);
+    writeStorage('usuarios', accounts);
 
     const next = [...users];
     if (userModal.index === null) {
@@ -489,6 +501,14 @@ export default function Administracion() {
                     <input name="stock" defaultValue={productModal?.stock ?? 10} id="prodStock" type="number" className="form-control" required />
                   </div>
                   <div className="mb-3">
+                    <label htmlFor="prodPrecioOferta" className="form-label">Precio de oferta (opcional)</label>
+                    <input name="precioOferta" defaultValue={productModal?.precioOferta || ''} id="prodPrecioOferta" type="number" min="0" className="form-control" placeholder="Ej: 12000" />
+                    <div className="form-check mt-2">
+                      <input name="enOferta" defaultChecked={Boolean(productModal?.enOferta)} id="prodEnOferta" type="checkbox" className="form-check-input" />
+                      <label htmlFor="prodEnOferta" className="form-check-label">Marcar como juego en oferta</label>
+                    </div>
+                  </div>
+                  <div className="mb-3">
                     <label htmlFor="prodCategoria" className="form-label">Categoría</label>
                     <select name="categoria" defaultValue={productModal?.categoria || categories[0]} id="prodCategoria" className="form-select">
                       {categories.map((c, i) => <option key={i} value={c}>{c}</option>)}
@@ -527,6 +547,11 @@ export default function Administracion() {
                   <div className="mb-3">
                     <label htmlFor="userEmail" className="form-label">Correo Electrónico</label>
                     <input name="email" defaultValue={userModal?.email || ''} id="userEmail" type="email" className="form-control" required />
+                  </div>
+                  <div className="mb-3">
+                    <label htmlFor="userPassword" className="form-label">Contraseña {userModal?.index !== null ? '(dejar vacía para conservar la actual)' : ''}</label>
+                    <input name="password" defaultValue="" id="userPassword" type="password" className="form-control" minLength="3" autoComplete="new-password" placeholder={userModal?.index === null ? 'Contraseña para iniciar sesión' : 'Nueva contraseña (opcional)'} required={userModal?.index === null} />
+                    {userModal?.index === null && <small className="text-secondary">La contraseña se usará para iniciar sesión en Yakarta.</small>}
                   </div>
                   <div className="mb-3">
                     <label htmlFor="userRol" className="form-label">Rol</label>

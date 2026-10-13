@@ -10,7 +10,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "test": "jasmine --config=jasmine.json",
-    "test:watch": "jasmine --watch"
+    "test:watch": "jasmine --config=jasmine.json --watch"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",

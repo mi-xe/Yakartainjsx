@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCurrentUser } from '../lib/storage';
+import { formatCLP, getCurrentUser, getCustomerBalance } from '../lib/storage';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -44,7 +44,11 @@ export default function Navbar() {
                     {user.rol === 'Administrador' ? (
                       <li><Link className="dropdown-item text-warning fw-bold" to="/admin"><i className="bi bi-shield-lock-fill me-2" />Panel Admin</Link></li>
                     ) : (
-                      <li><Link className="dropdown-item text-info fw-bold" to="/compras"><i className="bi bi-bag-check-fill me-2" />Mis Compras Recientes</Link></li>
+                      <>
+                        <li><span className="dropdown-item-text text-success fw-bold"><i className="bi bi-wallet2 me-2" />Saldo: {formatCLP(getCustomerBalance(user.email))}</span></li>
+                        <li><Link className="dropdown-item text-info fw-bold" to="/fondos"><i className="bi bi-plus-circle me-2" />Agregar fondos</Link></li>
+                        <li><Link className="dropdown-item text-info fw-bold" to="/compras"><i className="bi bi-bag-check-fill me-2" />Mis Compras Recientes</Link></li>
+                      </>
                     )}
                     <li><hr className="dropdown-divider" /></li>
                     <li><button className="dropdown-item text-danger fw-bold" type="button" onClick={logout}><i className="bi bi-box-arrow-right me-2" />Cerrar Sesión</button></li>

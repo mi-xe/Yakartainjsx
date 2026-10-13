@@ -8,6 +8,7 @@ global.localStorage = dom.window.localStorage;
 global.document = dom.window.document;
 Object.defineProperty(global, 'navigator', { value: dom.window.navigator, configurable: true });
 global.HTMLElement = dom.window.HTMLElement;
+global.FormData = dom.window.FormData;
 global.Node = dom.window.Node;
 global.MutationObserver = dom.window.MutationObserver;
 global.getComputedStyle = dom.window.getComputedStyle;
