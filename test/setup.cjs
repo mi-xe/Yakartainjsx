@@ -23,3 +23,29 @@ require('@babel/register')({
   ],
   ignore: [/node_modules/],
 });
+
+
+jasmine.getEnv().addReporter({
+  specDone(result) {
+    const passed = result.status === 'passed';
+    const failed = result.status === 'failed';
+
+    const icon = passed ? '[OK]' : failed ? '[FALLO]' : '[OMITIDA]';
+
+    console.log(`${icon} ${result.fullName}`);
+
+    if (failed) {
+      result.failedExpectations.forEach((error) => {
+        console.log(`  Error: ${error.message}`);
+
+        if (error.stack) {
+          console.log(error.stack);
+        }
+      });
+    }
+  },
+
+  jasmineDone(result) {
+    console.log(`\nResultado final: ${result.overallStatus}`);
+  }
+});

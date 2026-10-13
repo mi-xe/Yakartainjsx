@@ -25,7 +25,7 @@ function renderWithRouter(element, initialEntries = ['/']) {
 }
 
 describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
-  //Props y eventos del botón
+  // 1-2: Props y eventos del botón
   it('01 - muestra la etiqueta recibida por el botón', () => {
     render(React.createElement(Boton, { etiqueta: 'Guardar juego', onClick: () => {} }));
     expect(screen.getByRole('button', { name: 'Guardar juego' })).toBeTruthy();
@@ -38,7 +38,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(manejarClick).toHaveBeenCalledTimes(1);
   });
 
-  //Estado del formulario
+  // 3: Estado del formulario
   it('03 - actualiza el estado del formulario cuando el usuario escribe', () => {
     render(React.createElement(FormularioPrueba));
     const campo = screen.getByRole('textbox', { name: 'Nombre' });
@@ -47,7 +47,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(screen.getByText('Texto ingresado: The Legend of Zelda')).toBeTruthy();
   });
 
-  //Evento y estado
+  // 4: Evento y estado
   it('04 - incrementa el contador y llama a onAccion al hacer clic', () => {
     const onAccion = jasmine.createSpy('onAccion');
     render(React.createElement(BotonContador, { onAccion }));
@@ -56,7 +56,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(onAccion).toHaveBeenCalledTimes(1);
   });
 
-  //5-11Funciones reales de almacenamiento y formato de Yakarta
+  // 5-11: Funciones reales de almacenamiento y formato de Yakarta
   it('05 - readStorage devuelve el valor alternativo si la clave no existe', () => {
     expect(readStorage('clave-inexistente', [])).toEqual([]);
   });
@@ -90,7 +90,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(getCurrentUser()).toBeNull();
   });
 
-  //Catálogo real de juegos
+  // 12-16: Catálogo real de juegos
   it('12 - el catálogo predeterminado contiene juegos', () => {
     expect(defaultProducts.length).toBeGreaterThan(0);
   });
@@ -112,7 +112,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(defaultProducts.every((product) => product.precio > 0 && typeof product.imagen === 'string' && product.imagen.length > 0)).toBeTrue();
   });
 
-  //Navegación y sesión
+  // 17-20: Navegación y sesión
   it('17 - Navbar muestra los enlaces principales de la tienda', () => {
     renderWithRouter(React.createElement(Navbar));
     expect(screen.getByRole('link', { name: /Tienda/i })).toBeTruthy();
@@ -140,7 +140,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(screen.getByRole('link', { name: /Iniciar Sesión/i })).toBeTruthy();
   });
 
-  //Tienda y carrito
+  // 21-23: Tienda y carrito
   it('21 - StorePage muestra productos del catálogo', () => {
     renderWithRouter(React.createElement(StorePage));
     expect(screen.getByRole('heading', { name: 'Midnight club' })).toBeTruthy();
@@ -162,7 +162,7 @@ describe('Yakarta - pruebas de propiedades, estado y eventos', () => {
     expect(screen.getByRole('alert').textContent).toContain('se agregó exitosamente al carrito');
   });
 
-  //Carrito de compras
+  // 24-25: Carrito de compras
   it('24 - CartPage informa cuando el carrito está vacío', () => {
     renderWithRouter(React.createElement(CartPage));
     expect(screen.getByText('El carrito está vacío.')).toBeTruthy();
@@ -363,9 +363,88 @@ describe('Yakarta - pruebas funcionales de tienda, saldo, contacto y administrac
     expect(getCustomerBalance('ana@example.com')).toBe(2000);
     expect(JSON.parse(localStorage.getItem('historialCompras'))[0].total).toBe(5000);
   });
+});
 
 
+// Páginas que no estaban cubiertas por las primeras 50 pruebas.
+const Inicio = require('../../pages/Inicio.jsx').default;
+const Registro = require('../../pages/Registro.jsx').default;
+const Blogs = require('../../pages/Blogs.jsx').default;
+const Nosotros = require('../../pages/Nosotros.jsx').default;
+const Direccion = require('../../pages/Direccion.jsx').default;
+const Compras = require('../../pages/Compras.jsx').default;
+const BlogDeadByDaylight = require('../../pages/BlogDeadByDaylight.jsx').default;
+const BlogNeedForSpeed = require('../../pages/BlogNeedForSpeed.jsx').default;
+const MidnightClub = require('../../pages/MidnightClub.jsx').default;
+
+describe('Yakarta - pruebas añadidas para páginas que faltaban', () => {
+  it('51 - Inicio muestra el título principal de Yakarta', () => {
+    renderWithRouter(React.createElement(Inicio));
+    expect(screen.getByRole('heading', { name: /Los mejores juegos, al mejor precio/i })).toBeTruthy();
+  });
 
 
+  it('52 - Blogs muestra accesos a los artículos principales', () => {
+    renderWithRouter(React.createElement(Blogs));
+    expect(screen.getByRole('link', { name: /LOS MEJORES AUTOS DEL MIDNIGHT CLUB/i }).getAttribute('href')).toBe('/midnight-club');
+    expect(screen.getByRole('link', { name: /GUIA DE SUPERVIVIENTE DBD/i }).getAttribute('href')).toBe('/blogs/dead-by-daylight');
+    expect(screen.getByRole('link', { name: /GUIA DE NFS: SHIFT/i }).getAttribute('href')).toBe('/blogs/need-for-speed-shift');
+  });
 
+  it('53 - Nosotros muestra su título y la sección de objetivos', () => {
+    renderWithRouter(React.createElement(Nosotros));
+    expect(screen.getByRole('heading', { name: /Quienes somos\?/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Nuestro Objetivo/i })).toBeTruthy();
+  });
+
+  it('54 - Dirección guarda los datos de despacho al enviar el formulario', () => {
+    renderWithRouter(React.createElement(Direccion), ['/direccion']);
+    fireEvent.change(screen.getByLabelText('Nombre Completo'), { target: { value: 'Ana Pérez' } });
+    fireEvent.change(screen.getByLabelText('Dirección de Calle y Número'), { target: { value: 'Av. Central 123' } });
+    fireEvent.change(screen.getByLabelText('Ciudad / Comuna'), { target: { value: 'Santiago' } });
+    fireEvent.change(screen.getByLabelText('Teléfono de Contacto'), { target: { value: '+56912345678' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar y Ver Resumen' }));
+
+    expect(JSON.parse(localStorage.getItem('direccionDespacho'))).toEqual({
+      nombre: 'Ana Pérez', calle: 'Av. Central 123', comuna: 'Santiago', telefono: '+56912345678'
+    });
+  });
+
+  it('55 - Compras muestra el mensaje cuando el usuario no tiene pedidos', () => {
+    localStorage.setItem('usuarioLogueado', JSON.stringify({ nombre: 'Ana', email: 'ana@example.com', rol: 'Cliente' }));
+    localStorage.setItem('historialCompras', JSON.stringify([]));
+    renderWithRouter(React.createElement(Compras), ['/compras']);
+    expect(screen.getByRole('heading', { name: 'Mis Compras Recientes' })).toBeTruthy();
+    expect(screen.getByText('Aún no has realizado ninguna compra')).toBeTruthy();
+  });
+
+  it('56 - Compras permite abrir el detalle de un pedido', () => {
+    localStorage.setItem('usuarioLogueado', JSON.stringify({ nombre: 'Ana', email: 'ana@example.com', rol: 'Cliente' }));
+    localStorage.setItem('historialCompras', JSON.stringify([{
+      id: 'PED-001', usuarioEmail: 'ana@example.com', fecha: '13/10/2026', estado: 'Pagado', total: 5000,
+      productos: [{ nombre: 'Black', precio: 5000, cantidad: 1 }]
+    }]));
+    renderWithRouter(React.createElement(Compras), ['/compras']);
+    fireEvent.click(screen.getByRole('button', { name: /Ver Detalle/i }));
+    expect(screen.getByRole('heading', { name: 'Detalle del Pedido: PED-001' })).toBeTruthy();
+    expect(screen.getByText('Black')).toBeTruthy();
+  });
+
+  it('57 - el artículo de Dead by Daylight muestra su título y enlace a la tienda', () => {
+    renderWithRouter(React.createElement(BlogDeadByDaylight));
+    expect(screen.getByRole('heading', { name: /Dead by Daylight: Guía y Noticias/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Comprar en Yakarta/i }).getAttribute('href')).toBe('/tienda');
+  });
+
+  it('58 - el artículo de Need for Speed muestra su contenido y enlace a la tienda', () => {
+    renderWithRouter(React.createElement(BlogNeedForSpeed));
+    expect(screen.getByRole('heading', { name: /NEED FOR SPEED: SHIFT/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Comprar Juego en Yakarta/i }).getAttribute('href')).toBe('/tienda');
+  });
+
+  it('59 - la página de Midnight Club muestra información de sus vehículos', () => {
+    renderWithRouter(React.createElement(MidnightClub));
+    expect(screen.getByRole('heading', { name: 'Volkswagen Golf GTI' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Audi R8' })).toBeTruthy();
+  });
 });

@@ -19,3 +19,4 @@ it('49 - impide pagar si el saldo es insuficiente'
 Página Administración — Administracion.jsx
 it('38 - permite crear un usuario con contraseña'
 
+
