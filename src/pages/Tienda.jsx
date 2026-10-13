@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { defaultProducts } from '../lib/products';
+import { apiRequest } from '../lib/api';
 import { formatCLP, getProductPrice, readStorage, writeStorage } from '../lib/storage';
 
 export default function Tienda() {
@@ -15,6 +16,17 @@ export default function Tienda() {
       return { ...original, ...product, categoria: product.categoria || original?.categoria || 'Otros' };
     });
   });
+
+  useEffect(() => {
+    let active = true;
+    apiRequest('products').then(({ products: dbProducts }) => {
+      if (!active || !dbProducts.length) return;
+      const mapped = dbProducts.map((p) => ({ ...p, enOferta: Boolean(Number(p.enOferta)), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), precio: Number(p.precio) }));
+      setProducts(mapped);
+      writeStorage('productosTienda', mapped);
+    }).catch(() => { /* Si la API no está disponible, se mantiene el catálogo local. */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => writeStorage('productosTienda', products), [products]);
 
