@@ -564,7 +564,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-
+     {/* yocuando borro los juegos: hola soy mixe */}
       {/* MODAL HISTORIAL COMPRAS USUARIO */}
       {Boolean(userHistoryModal) && (
         <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
