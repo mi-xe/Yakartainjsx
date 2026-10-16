@@ -5,7 +5,7 @@ const featuredGames = [
   { title: 'Midnight Club: Los Angeles', category: 'Carreras', image: '/imgtienda/Midnight_Club-Los_Angeles.jpg', description: 'Corre por la ciudad y construye tu reputación.', to: '/midnight-club' },
   { title: 'FIFA Street', category: 'Deportes', image: '/imgtienda/fifastreet.jpg', description: 'El fútbol callejero, sin reglas y con estilo.', to: '/tienda' },
   { title: 'Dead by Daylight', category: 'Terror', image: '/imgtienda/dbd.jpg', description: 'Sobrevive a la noche o conviértete en la pesadilla.', to: '/blogs/dead-by-daylight' },
-  { title: 'Need for Speed', category: 'Carreras', image: '/imgtienda/rd9.jpg', description: 'Velocidad, persecuciones y adrenalina.', to: '/blogs/need-for-speed-shift' },
+  { title: 'Need for Speed', category: 'Carreras', image: '/imgtienda/nfs shift.jpg', description: 'Velocidad, persecuciones y adrenalina.', to: '/blogs/need-for-speed-shift' },
   { title: 'Grand Theft Auto', category: 'Acción', image: '/imgtienda/gta6.webp', description: 'Explora mundos abiertos llenos de posibilidades.', to: '/tienda' },
   { title: 'Red Dead Redemption 2', category: 'Aventura', image: '/imgtienda/rdr2.webp', description: 'Una aventura épica en el salvaje oeste.', to: '/tienda' },
 ];
