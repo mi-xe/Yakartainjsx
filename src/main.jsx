@@ -44,13 +44,13 @@ function App() {
         <Route path="/somos" element={<Routed component={<Nosotros />} />} />
         <Route path="/tienda" element={<Routed component={<Tienda />} />} />
         <Route path="/fondos" element={<Routed component={<Fondos />} />} />
-        <Route path="/carrito" element={<Routed component={<Carrito />} layout={false} />} />
+        <Route path="/carrito" element={<Routed component={<Carrito />} />} />
         <Route path="/compras" element={<Routed component={<Compras />} />} />
         <Route path="/contactanos" element={<Routed component={<Contacto />} />} />
-        <Route path="/direccion" element={<Routed component={<Direccion />} layout={false} />} />
-        <Route path="/login" element={<Routed component={<IniciarSesion />} layout={false} />} />
-        <Route path="/registro" element={<Routed component={<Registro />} layout={false} />} />
-        <Route path="/resumen" element={<Routed component={<Resumen />} layout={false} />} />
+        <Route path="/direccion" element={<Routed component={<Direccion />} />} />
+        <Route path="/login" element={<Routed component={<IniciarSesion />} />} />
+        <Route path="/registro" element={<Routed component={<Registro />} />} />
+        <Route path="/resumen" element={<Routed component={<Resumen />} />} />
         <Route path="/admin" element={<Routed component={<Administracion />} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

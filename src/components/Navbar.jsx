@@ -13,31 +13,31 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-custom">
-      <div className="container-fluid">
-        <Link className="navbar-brand" to="/">
+    <nav className="navbar navbar-expand-lg navbar-custom site-navbar">
+      <div className="container-fluid site-navbar-inner">
+        <Link className="navbar-brand site-brand" to="/" aria-label="Yakarta, inicio">
           <img src="/img/logofeoyakarta.png" alt="Logo Yakarta" className="logo-navbar" />
         </Link>
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Abrir navegación">
           <span className="navbar-toggler-icon" />
         </button>
         <div className="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+          <ul className="navbar-nav site-main-nav me-auto mb-2 mb-lg-0">
             <li className="nav-item"><Link className="nav-link" to="/tienda">Tienda</Link></li>
-            <li className="nav-item"><Link className="nav-link" to="/blogs">Blogs</Link></li>
-            <li className="nav-item"><Link className="nav-link" to="/contactanos">Contactanos</Link></li>
-            <li className="nav-item"><Link className="nav-link" to="/somos">Acerca de nosotros</Link></li>
+            <li className="nav-item"><Link className="nav-link" to="/blogs">Novedades</Link></li>
+            <li className="nav-item"><Link className="nav-link" to="/contactanos">Contacto</Link></li>
+            <li className="nav-item"><Link className="nav-link" to="/somos">Nosotros</Link></li>
           </ul>
           <ul className="navbar-nav ms-auto align-items-center gap-2">
             <li className="nav-item">
-              <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2" to="/carrito">
+              <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 navbar-action" to="/carrito">
                 <i className="bi bi-cart3" /> <span>Carrito</span>
               </Link>
             </li>
             <li className="nav-item">
               {user ? (
                 <div className="dropdown">
-                  <button className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <button className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 dropdown-toggle navbar-action" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i className="bi bi-person-circle" /> <span>{user.nombre}</span>
                   </button>
                   <ul className="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow mt-2">
@@ -55,7 +55,7 @@ export default function Navbar() {
                   </ul>
                 </div>
               ) : (
-                <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2" to="/login">
+                <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 navbar-action" to="/login">
                   <i className="bi bi-box-arrow-in-right" /> <span>Iniciar Sesión</span>
                 </Link>
               )}
