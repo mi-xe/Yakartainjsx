@@ -32,7 +32,7 @@ export default function BlogDeadByDaylight() {
 <div className="card card-login w-100 p-4 mb-4 text-center">
 <h3 className="card-title h5">Consigue el Juego</h3>
 <p className="text-secondary">Aprovecha nuestras ofertas y súmate a las partidas.</p>
-<Link to="/tienda">
+<Link to={`/tienda?juego=Dead by daylight`}>
 <button className="btn btn-primary mt-2 w-100">Comprar en Yakarta</button>
 </Link>
 </div>

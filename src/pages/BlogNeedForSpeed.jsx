@@ -67,7 +67,7 @@ export default function BlogNeedForSpeed() {
 <p className="text-secondary mb-4">
           La entrega que cambió el rumbo de la franquicia apostando por las pistas profesionales y la simulación al volante.
         </p>
-<Link to="/tienda">
+<Link to={`/tienda?juego=NFS: shift`}>
 <button className="btn btn-primary btn-lg w-100">Comprar Juego en Yakarta</button>
 </Link>
 </div>

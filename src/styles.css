@@ -308,3 +308,69 @@ body { margin: 0; background: var(--yakarta-bg); color: #f7f7f9; font-family: In
 @media (max-width: 991px) { .site-navbar { padding: 0 12px; } .site-navbar .nav-link { padding: 12px 8px !important; } .site-navbar .navbar-nav { align-items: stretch; } .site-navbar .navbar-collapse { padding: 10px 0 16px; } .site-navbar .navbar-action { justify-content: flex-start !important; } .featured-carousel { grid-template-columns: repeat(2,minmax(0,1fr)); } .featured-card { height: 390px; } .home-intro-mark { width: 160px; } }
 @media (max-width: 575px) { .home-intro { min-height: 250px; padding: 35px 22px; } .home-intro-mark { display: none; } .featured-section { padding: 30px 14px 20px; } .featured-carousel { grid-template-columns: 1fr; } .featured-card { height: 390px; } .featured-card:nth-child(n+3) { display: none; } .home-discover { align-items: flex-start; flex-direction: column; padding: 30px 22px 38px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+/* Tienda Yakarta: fichas de juego inspiradas en la exploración de tiendas PC, con paleta oscura y acentos celestes. */
+.yakarta-store { min-height: 75vh; color: #f5f6fa; background: radial-gradient(ellipse at 80% 0%,rgba(45,177,226,.08),transparent 38%); }
+.store-heading h1 { margin: 0 0 8px; color: #fff; font-size: clamp(30px,4vw,44px); font-weight: 850; letter-spacing: -.04em; }
+.store-heading p { margin: 0; color: #a9aab6; }
+.store-eyebrow { display: inline-block; margin-bottom: 8px; color: #82dafa; font-size: 10px; font-weight: 850; letter-spacing: .16em; }
+.store-cart-btn { padding: 10px 16px; color: #111219; background: #39bff1; border: 1px solid #39bff1; border-radius: 7px; font-weight: 800; }
+.store-cart-btn:hover { color: #111219; background: #7bdcff; border-color: #7bdcff; }
+.store-notice { position: relative; margin-bottom: 18px; padding: 13px 46px 13px 16px; color: #d7f9e5; background: #142a25; border: 1px solid #286c52; border-radius: 8px; }
+.store-notice button { position: absolute; top: 5px; right: 12px; color: #d7f9e5; background: none; border: 0; font-size: 24px; }
+.store-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; padding: 12px; background: #1a1b22; border: 1px solid #30313c; border-radius: 10px; }
+.store-search { display: flex; align-items: center; flex: 1; min-width: 180px; gap: 10px; padding: 0 12px; color: #8e909c; background: #101116; border: 1px solid #393a45; border-radius: 6px; }
+.store-search input { width: 100%; min-height: 40px; color: #fff; background: transparent; border: 0; outline: 0; }
+.store-toolbar select { min-height: 42px; max-width: 230px; padding: 0 32px 0 12px; color: #ededf2; background: #101116; border: 1px solid #393a45; border-radius: 6px; }
+.store-offer-filter { display: flex; align-items: center; gap: 8px; color: #d5d5df; white-space: nowrap; font-size: 13px; }
+.store-offer-filter input { accent-color: #39bff1; }
+.store-count { color: #a4a5b1; font-size: 12px; white-space: nowrap; }
+.store-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; align-items: stretch; }
+.store-game-card { min-width: 0; overflow: hidden; background: #1a1b22; border: 1px solid #30313b; border-radius: 9px; transition: transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
+.store-game-card:hover { transform: translateY(-3px); border-color: #4b9cba; box-shadow: 0 12px 30px rgba(0,0,0,.24); }
+.store-cover-button { position: relative; display: block; width: 100%; height: 205px; overflow: hidden; padding: 0; background: #242630; border: 0; text-align: left; }
+.store-cover { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease,filter .25s ease; }
+.store-game-card:hover .store-cover { transform: scale(1.04); filter: brightness(.76); }
+.store-sale-badge { position: absolute; top: 12px; left: 12px; padding: 5px 8px; color: #fff; background: #cf3f57; border-radius: 4px; font-size: 10px; font-weight: 850; letter-spacing: .08em; }
+.store-quickview { position: absolute; right: 12px; bottom: 12px; left: 12px; padding: 10px; color: #f5f8fb; background: rgba(12,13,18,.86); border: 1px solid rgba(255,255,255,.2); border-radius: 6px; font-size: 12px; font-weight: 750; opacity: 0; transform: translateY(5px); transition: opacity .2s ease,transform .2s ease; }
+.store-game-card:hover .store-quickview,.store-cover-button:focus-visible .store-quickview { opacity: 1; transform: translateY(0); }
+.store-game-info { display: flex; min-height: 205px; flex-direction: column; padding: 15px; }
+.store-game-meta { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; color: #8fdcf7; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.store-game-meta small { color: #7be0a9; font-size: 10px; letter-spacing: 0; text-transform: none; }
+.store-game-title { align-self: flex-start; margin: 0 0 7px; padding: 0; color: #fff; background: transparent; border: 0; font-size: 19px; font-weight: 800; line-height: 1.25; text-align: left; }
+.store-game-title:hover { color: #75d7fa; }
+.store-game-description { display: -webkit-box; overflow: hidden; margin: 0 0 16px; color: #b4b5c0; font-size: 12px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.store-game-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.store-price { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.store-price del { color: #777986; font-size: 11px; }
+.store-price strong { color: #fff; font-size: 17px; font-weight: 800; }
+.store-add-btn { display: flex; align-items: center; gap: 7px; padding: 8px 10px; color: #101116; background: #3cc2f3; border: 1px solid #3cc2f3; border-radius: 5px; font-size: 11px; font-weight: 850; white-space: nowrap; }
+.store-add-btn:hover,.store-buy-btn:hover { background: #8be0ff; border-color: #8be0ff; }
+.store-empty { grid-column: 1/-1; padding: 70px 20px; color: #aeb0bc; text-align: center; }
+.store-empty>i { color: #64d1f7; font-size: 42px; }
+.store-empty h2 { margin: 12px 0 8px; color: #fff; font-size: 25px; }
+.store-modal-backdrop { position: fixed; z-index: 2000; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(4,5,9,.82); backdrop-filter: blur(8px); }
+.store-detail-modal { position: relative; width: min(1080px,100%); max-height: calc(100vh - 48px); overflow-y: auto; padding: clamp(20px,3vw,34px); color: #f5f6fa; background: #17181f; border: 1px solid #3b3d49; border-radius: 12px; box-shadow: 0 28px 100px rgba(0,0,0,.55); }
+.store-modal-close { position: absolute; z-index: 2; top: 12px; right: 15px; width: 38px; height: 38px; color: #fff; background: #2b2d36; border: 1px solid #494b57; border-radius: 50%; font-size: 25px; line-height: 1; }
+.store-detail-layout { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(280px,.75fr); gap: clamp(22px,3vw,38px); align-items: start; }
+.store-main-shot { height: clamp(240px,34vw,460px); overflow: hidden; background: #0d0e12; border-radius: 7px; }
+.store-main-shot img { width: 100%; height: 100%; object-fit: contain; }
+.store-shot-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; margin-top: 10px; }
+.store-shot-strip button { height: 82px; overflow: hidden; padding: 0; background: #0d0e12; border: 2px solid transparent; border-radius: 5px; opacity: .75; }
+.store-shot-strip button.is-active { border-color: #45c9f6; opacity: 1; }
+.store-shot-strip img { width: 100%; height: 100%; object-fit: cover; }
+.store-detail-copy { padding: 14px 0 0; }
+.store-detail-copy h2 { margin: 4px 0 16px; padding-right: 25px; color: #fff; font-size: clamp(27px,3vw,40px); font-weight: 850; line-height: 1.06; letter-spacing: -.04em; }
+.store-detail-copy>p:not(.store-detail-note) { color: #c2c3cd; font-size: 14px; line-height: 1.75; }
+.store-detail-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.store-detail-tags span { padding: 7px 9px; color: #c7c8d2; background: #242630; border: 1px solid #393b47; border-radius: 5px; font-size: 11px; }
+.store-detail-purchase { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 24px; padding: 16px; background: #20222a; border: 1px solid #363844; border-radius: 8px; }
+.store-detail-purchase .store-price strong { font-size: 24px; }
+.store-buy-btn,.store-add-wide { min-height: 45px; color: #111219; background: #3cc2f3; border: 1px solid #3cc2f3; border-radius: 5px; font-weight: 850; }
+.store-add-wide { color: #f5f6fa; background: #30323d; border-color: #4a4c59; }
+.store-add-wide:hover { background: #3d404c; }
+.store-detail-note { margin: 12px 0 0; color: #858794; font-size: 11px; }
+@media (min-width: 1450px) { .store-grid { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+@media (max-width: 900px) { .store-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .store-detail-layout { grid-template-columns: 1fr; } .store-detail-copy { padding-top: 0; } .store-main-shot { height: min(48vw,360px); } }
+@media (max-width: 600px) { .store-toolbar { align-items: stretch; flex-direction: column; } .store-toolbar select { max-width: none; } .store-count { align-self: flex-end; } .store-grid { grid-template-columns: 1fr; gap: 14px; } .store-cover-button { height: 220px; } .store-game-info { min-height: auto; } .store-quickview { opacity: 1; transform: none; } .store-modal-backdrop { padding: 10px; } .store-detail-modal { max-height: calc(100vh - 20px); padding: 18px; } .store-main-shot { height: 230px; } .store-shot-strip button { height: 62px; } }
+@media (prefers-reduced-motion: reduce) { .store-game-card,.store-cover,.store-quickview { transition: none !important; } }
