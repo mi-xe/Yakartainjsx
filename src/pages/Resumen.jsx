@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatCLP, getCustomerBalance, readStorage, setCustomerBalance, writeStorage } from '../lib/storage';
+import { api } from '../lib/api';
 
 export default function Resumen() {
   const navigate = useNavigate();
@@ -9,7 +10,7 @@ export default function Resumen() {
   const [message, setMessage] = useState(null);
   const total = cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
 
-  function finishPurchase() {
+  async function finishPurchase() {
     const user = readStorage('usuarioLogueado', null);
     if (!user) {
       setMessage({ type: 'login', text: 'Para confirmar tu compra necesitas iniciar sesión.' });
@@ -23,14 +24,12 @@ export default function Resumen() {
       setMessage({ type: 'funds', text: `Tu saldo (${formatCLP(getCustomerBalance(user.email))}) no alcanza para pagar ${formatCLP(total)}. Agrega fondos para continuar.` });
       return;
     }
-    if (user.rol === 'Cliente') setCustomerBalance(user.email, getCustomerBalance(user.email) - total);
-    const order = { id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`, usuarioEmail: user.email || user.nombre, fecha: new Date().toISOString().split('T')[0], total, estado: 'Entregado', productos: cart.map(({ nombre, precio, cantidad }) => ({ nombre, precio, cantidad })) };
-    const history = readStorage('historialCompras', []);
-    history.unshift(order);
-    writeStorage('historialCompras', history);
-    localStorage.removeItem('carrito');
-    localStorage.removeItem('direccionDespacho');
-    navigate('/compras');
+    try {
+      const order = await api.createOrder({ usuarioId: user.id, total, estado: 'Entregado', productos: cart.map(({ id, nombre, precio, cantidad }) => ({ productoId: id || null, nombre, precio, cantidad })) });
+      if (user.rol === 'Cliente') setCustomerBalance(user.email, getCustomerBalance(user.email) - total);
+      const history = readStorage('historialCompras', []); history.unshift({ ...order, usuarioEmail: user.email, productos: cart.map(({ nombre, precio, cantidad }) => ({ nombre, precio, cantidad })) }); writeStorage('historialCompras', history);
+      localStorage.removeItem('carrito'); localStorage.removeItem('direccionDespacho'); navigate('/compras');
+    } catch (e) { setMessage({ type: 'empty', text: `No se pudo registrar el pedido en el backend: ${e.message}` }); }
   }
 
   return (

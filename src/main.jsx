@@ -19,6 +19,7 @@ import Compras from './pages/Compras';
 import Contacto from './pages/Contacto';
 import Direccion from './pages/Direccion';
 import IniciarSesion from './pages/IniciarSesion';
+import OAuthCallback from './pages/OAuthCallback';
 import Registro from './pages/Registro';
 import Resumen from './pages/Resumen';
 import Administracion from './pages/Administracion';
@@ -49,6 +50,7 @@ function App() {
         <Route path="/contactanos" element={<Routed component={<Contacto />} />} />
         <Route path="/direccion" element={<Routed component={<Direccion />} />} />
         <Route path="/login" element={<Routed component={<IniciarSesion />} />} />
+        <Route path="/oauth/callback" element={<Routed component={<OAuthCallback />} />} />
         <Route path="/registro" element={<Routed component={<Registro />} />} />
         <Route path="/resumen" element={<Routed component={<Resumen />} />} />
         <Route path="/admin" element={<Routed component={<Administracion />} />} />

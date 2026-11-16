@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatCLP, getCurrentUser, readStorage } from '../lib/storage';
+import { api } from '../lib/api';
 
 export default function Compras() {
   const navigate = useNavigate();
   const user = getCurrentUser();
   const [selected, setSelected] = useState(null);
-  const history = readStorage('historialCompras', []);
-  const purchases = user ? history.filter((purchase) => purchase.usuarioEmail === (user.email || user.nombre) || !purchase.usuarioEmail) : [];
+  const [purchases, setPurchases] = useState(() => readStorage('historialCompras', []).filter((p) => p.usuarioEmail === (user?.email || user?.nombre)));
+  useEffect(() => { if (user) api.orders().then(rows => setPurchases(rows.filter(p => p.usuarioEmail === user.email).map(p => ({...p, productos: p.productos.map(d => ({nombre:d.nombre, cantidad:d.cantidad, precio:Number(d.precio)}))})))).catch(() => {}); }, [user]);
 
   useEffect(() => {
     if (!user) navigate('/login');

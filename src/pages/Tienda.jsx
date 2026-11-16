@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { defaultProducts } from '../lib/products';
-import { apiRequest } from '../lib/api';
+import { apiRequest, api } from '../lib/api';
 import { formatCLP, getProductPrice, readStorage, writeStorage } from '../lib/storage';
 
 const previewImages = {
@@ -101,7 +101,9 @@ export default function Tienda() {
 
   useEffect(() => {
     let active = true;
-    apiRequest('products').then(({ products: dbProducts }) => {
+    apiRequest('products').then(async ({ products: initialRows }) => {
+      let dbProducts = initialRows;
+      if (!dbProducts.length) { for (const p of defaultProducts) await api.createProduct({...p, stock: 10}); dbProducts = await api.products(); }
       if (!active || !dbProducts.length) return;
       const mapped = dbProducts.map((p) => ({ ...p, enOferta: Boolean(Number(p.enOferta)), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), precio: Number(p.precio) }));
       setProducts(mapped);
