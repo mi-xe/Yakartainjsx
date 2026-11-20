@@ -1,14 +1,27 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { formatCLP, getCurrentUser, getCustomerBalance } from '../lib/storage';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { formatCLP } from '../lib/utils';
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(() => getCurrentUser());
+  const location = useLocation();
+  const { user, logout: endSession } = useAuth();
+  const [balance, setBalance] = useState(0);
 
-  function logout() {
-    localStorage.removeItem('usuarioLogueado');
-    setUser(null);
+  useEffect(() => {
+    let active = true;
+    if (user?.rol === 'Cliente') {
+      api.balance().then((value) => active && setBalance(value)).catch(() => active && setBalance(0));
+    } else {
+      setBalance(0);
+    }
+    return () => { active = false; };
+  }, [user, location.pathname]);
+
+  async function logout() {
+    await endSession();
     navigate('/');
   }
 
@@ -45,7 +58,7 @@ export default function Navbar() {
                       <li><Link className="dropdown-item text-warning fw-bold" to="/admin"><i className="bi bi-shield-lock-fill me-2" />Panel Admin</Link></li>
                     ) : (
                       <>
-                        <li><span className="dropdown-item-text text-success fw-bold"><i className="bi bi-wallet2 me-2" />Saldo: {formatCLP(getCustomerBalance(user.email))}</span></li>
+                        <li><span className="dropdown-item-text text-success fw-bold"><i className="bi bi-wallet2 me-2" />Saldo: {formatCLP(balance)}</span></li>
                         <li><Link className="dropdown-item text-info fw-bold" to="/fondos"><i className="bi bi-plus-circle me-2" />Agregar fondos</Link></li>
                         <li><Link className="dropdown-item text-info fw-bold" to="/compras"><i className="bi bi-bag-check-fill me-2" />Mis Compras Recientes</Link></li>
                       </>

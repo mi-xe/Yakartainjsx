@@ -1,24 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatCLP, readStorage, writeStorage } from '../lib/storage';
+import { api } from '../lib/api';
+import { formatCLP } from '../lib/utils';
 
 export default function Carrito() {
   const navigate = useNavigate();
-  const [cart, setCart] = useState(() => readStorage('carrito', []));
+  const [cart, setCart] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [checkoutError, setCheckoutError] = useState('');
-  const total = cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
 
-  function removeItem(index) {
-    const next = cart.filter((_, itemIndex) => itemIndex !== index);
-    setCart(next);
-    setCheckoutError('');
-    writeStorage('carrito', next);
+
+  useEffect(() => {
+    let active = true;
+    api.cart()
+      .then((result) => active && setCart(result.items || []))
+      .catch((error) => active && setCheckoutError(error.message))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, []);
+
+  const total = cart.reduce((sum, item) => sum + Number(item.precio) * Number(item.cantidad), 0);
+
+  async function removeItem(productId) {
+    try {
+      const result = await api.removeFromCart(productId);
+      setCart(result.items || []);
+      setCheckoutError('');
+    } catch (error) {
+      setCheckoutError(error.message);
+    }
   }
 
-  function clearCart() {
-    localStorage.removeItem('carrito');
-    setCart([]);
-    setCheckoutError('');
+  async function clearCart() {
+    try {
+      const result = await api.clearCart();
+      setCart(result.items || []);
+      setCheckoutError('');
+    } catch (error) {
+      setCheckoutError(error.message);
+    }
   }
 
   function goToAddress() {
@@ -36,17 +56,18 @@ export default function Carrito() {
       <div className="row">
         <div className="col-md-8">
           <ul className="list-group list-group-flush mb-4">
-            {cart.length === 0 ? (
+            {loading ? <li className="list-group-item bg-dark text-white border-secondary">Cargando carrito desde MySQL...</li> : null}
+            {!loading && cart.length === 0 ? (
               <li className="list-group-item bg-dark text-white border-secondary">El carrito está vacío.</li>
-            ) : cart.map((product, index) => {
-              const subtotal = product.precio * product.cantidad;
+            ) : cart.map((product) => {
+              const subtotal = Number(product.precio) * Number(product.cantidad);
               return (
-                <li className="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center" key={`${product.nombre}-${index}`}>
+                <li className="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center" key={product.id}>
                   <div className="d-flex align-items-center">
                     <img src={`/${product.imagen}`} style={{ width: '50px', height: '60px', objectFit: 'cover' }} className="me-3 rounded" alt={product.nombre} />
                     <div><h6 className="mb-0">{product.nombre}</h6><small className="text-muted">Cantidad: {product.cantidad} x {formatCLP(product.precio)}</small></div>
                   </div>
-                  <div><span className="me-3 fw-bold">{formatCLP(subtotal)}</span><button type="button" onClick={() => removeItem(index)} className="btn btn-danger btn-sm">X</button></div>
+                  <div><span className="me-3 fw-bold">{formatCLP(subtotal)}</span><button type="button" onClick={() => removeItem(product.id)} className="btn btn-danger btn-sm" aria-label={`Quitar ${product.nombre}`}>X</button></div>
                 </li>
               );
             })}
@@ -57,9 +78,9 @@ export default function Carrito() {
             <h4>Resumen</h4><hr />
             {checkoutError && <div className="alert alert-warning mb-3" role="alert">{checkoutError}</div>}
             <h5>Total: <span>{formatCLP(total)}</span></h5>
-            <button type="button" onClick={goToAddress} className="btn btn-success w-100 mt-3">Proceder al Pago</button>
-            <button type="button" onClick={clearCart} className="btn btn-outline-danger w-100 mt-2">Vaciar Carrito</button>
-            <Link to="/" className="btn btn-link text-white text-center mt-2">Volver a la tienda</Link>
+            <button type="button" onClick={goToAddress} className="btn btn-success w-100 mt-3" disabled={loading}>Proceder al Pago</button>
+            <button type="button" onClick={clearCart} className="btn btn-outline-danger w-100 mt-2" disabled={loading || cart.length === 0}>Vaciar Carrito</button>
+            <Link to="/tienda" className="btn btn-link text-white text-center mt-2">Volver a la tienda</Link>
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import './styles.css';
 
 import PageLayout from './components/PageLayout';
+import { AuthProvider } from './context/AuthContext';
 import Inicio from './pages/Inicio';
 import Blogs from './pages/Blogs';
 import BlogDeadByDaylight from './pages/BlogDeadByDaylight';
@@ -19,6 +20,7 @@ import Compras from './pages/Compras';
 import Contacto from './pages/Contacto';
 import Direccion from './pages/Direccion';
 import IniciarSesion from './pages/IniciarSesion';
+import OAuthCallback from './pages/OAuthCallback';
 import Registro from './pages/Registro';
 import Resumen from './pages/Resumen';
 import Administracion from './pages/Administracion';
@@ -34,6 +36,7 @@ function Routed({ component, layout = true }) {
 
 function App() {
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Routed component={<Inicio />} />} />
@@ -49,12 +52,14 @@ function App() {
         <Route path="/contactanos" element={<Routed component={<Contacto />} />} />
         <Route path="/direccion" element={<Routed component={<Direccion />} />} />
         <Route path="/login" element={<Routed component={<IniciarSesion />} />} />
+        <Route path="/oauth/callback" element={<Routed component={<OAuthCallback />} />} />
         <Route path="/registro" element={<Routed component={<Registro />} />} />
         <Route path="/resumen" element={<Routed component={<Resumen />} />} />
         <Route path="/admin" element={<Routed component={<Administracion />} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   );
 }
 

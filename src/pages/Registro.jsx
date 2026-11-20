@@ -17,8 +17,7 @@ export default function Registro() {
     setLoading(true);
     try {
       await apiRequest('register', { nombre: form.nombre.trim(), email: form.email.trim().toLowerCase(), password: form.password });
-      localStorage.setItem('registroExitoso', 'true');
-      navigate('/login');
+      navigate('/login', { state: { registered: true } });
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }

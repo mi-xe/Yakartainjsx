@@ -1,25 +1,33 @@
 import { useState } from 'react';
 
-import { readStorage, writeStorage } from '../lib/storage';
+import { api } from '../lib/api';
 
 const emptyForm = { email: '', nombre: '', telefono: '', comentario: '' };
 
 export default function Contacto() {
   const [form, setForm] = useState(emptyForm);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
 
   const update = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
     if (submitted) setSubmitted(false);
   };
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
-    const solicitudes = readStorage('solicitudesContacto', []);
-    solicitudes.unshift({ ...form, fecha: new Date().toISOString() });
-    writeStorage('solicitudesContacto', solicitudes);
-    setSubmitted(true);
-    setForm(emptyForm);
+    setSending(true);
+    setError('');
+    try {
+      await api.submitContact(form);
+      setSubmitted(true);
+      setForm(emptyForm);
+    } catch (reason) {
+      setError(reason.message || 'No se pudo enviar el mensaje.');
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -33,6 +41,7 @@ export default function Contacto() {
       </div>
 
       <div className="formcontactanos derecha formularioContacto">
+        {error && <div className="alert alert-danger" role="alert">{error}</div>}
         {submitted && (
           <div className="alert alert-success shadow-sm border-0 mb-4" role="status">
             <div className="d-flex align-items-start gap-3">
@@ -68,7 +77,7 @@ export default function Contacto() {
             <label htmlFor="comentario" className="form-label">Comentario</label>
             <textarea name="comentario" value={form.comentario} onChange={update} id="comentario" className="form-control" rows="4" />
           </div>
-          <button type="submit" className="btn btn-primary">Confirmar</button>
+          <button type="submit" className="btn btn-primary" disabled={sending}>{sending ? 'Enviando...' : 'Confirmar'}</button>
         </form>
       </div>
     </div>

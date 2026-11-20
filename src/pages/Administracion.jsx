@@ -1,26 +1,53 @@
-import { useState } from 'react';
-import { defaultProducts } from '../lib/products';
-import { formatCLP, readStorage, writeStorage } from '../lib/storage';
-
-const defaultUsers = [
-  { nombre: 'Cristian Orlando', email: 'cristian@admin.com', rol: 'Administrador' },
-  { nombre: 'Juan Pérez', email: 'juan@gmail.com', rol: 'Cliente' },
-  { nombre: 'Mixin', email: 'mixin@admin.com', rol: 'Administrador' },
-];
-
-const defaultCategories = ['Acción', 'Aventura', 'RPG', 'Estrategia', 'Deportes', 'Carreras', 'Terror', 'Lucha', 'Simulación'];
-
-const defaultOrders = [
-  { id: 'ORD-001', cliente: 'juan@gmail.com', fecha: '2026-03-20', total: 45000, items: [{ nombre: 'Zelda BOTW', precio: 45000, cant: 1 }] },
-  { id: 'ORD-002', cliente: 'cristian@admin.com', fecha: '2026-03-21', total: 60000, items: [{ nombre: 'Mario Odyssey', precio: 30000, cant: 2 }] }
-];
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api';
+import { formatCLP } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 export default function Administracion() {
-  // Estados Principales
-  const [products, setProducts] = useState(() => readStorage('productosTienda', defaultProducts) || []);
-  const [users, setUsers] = useState(() => readStorage('usuariosAdmin', defaultUsers) || []);
-  const [categories, setCategories] = useState(() => readStorage('categoriasTienda', defaultCategories) || []);
-  const [orders] = useState(() => readStorage('ordenesTienda', defaultOrders) || []);
+  const { user, loading: authLoading } = useAuth();
+  const [products, setProducts] = useState([]);
+  const [categoryRows, setCategoryRows] = useState([]);
+  const [apiError, setApiError] = useState('');
+  const [users, setUsers] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (user?.rol !== 'Administrador') { setLoadingData(false); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const [productRows, categoryData, userRows, orderRows] = await Promise.all([
+          api.products(), api.categories(), api.users(), api.orders(),
+        ]);
+        if (!alive) return;
+        setProducts(productRows);
+        setCategoryRows(categoryData);
+        setCategories(categoryData.map((category) => category.nombre));
+        setUsers(userRows);
+        setOrders(orderRows.map((order) => ({
+          id: order.id,
+          cliente: order.usuarioEmail || `Usuario #${order.usuarioId ?? 'N/D'}`,
+          fecha: order.fecha,
+          total: Number(order.total),
+          estado: order.estado,
+          items: (order.productos || []).map((detail) => ({
+            nombre: detail.nombre,
+            cant: Number(detail.cantidad),
+            precio: Number(detail.precio),
+          })),
+        })));
+        setApiError('');
+      } catch (error) {
+        if (alive) setApiError(`No se pudo cargar la información de MySQL: ${error.message}`);
+      } finally {
+        if (alive) setLoadingData(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [authLoading, user]);
 
   // Control de Navegación: 'dashboard' | 'products' | 'categories' | 'users' | 'orders' | 'profile'
   const [tab, setTab] = useState('dashboard');
@@ -39,9 +66,9 @@ export default function Administracion() {
   const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState(null); // { index, nombre }
 
   // Guardar Cambios
-  function saveProducts(next) { setProducts(next); writeStorage('productosTienda', next); }
-  function saveUsers(next) { setUsers(next); writeStorage('usuariosAdmin', next); }
-  function saveCategories(next) { setCategories(next); writeStorage('categoriasTienda', next); }
+  function saveProducts(next) { setProducts(next); }
+  function saveUsers(next) { setUsers(next); }
+  function saveCategories(next) { setCategories(next); }
 
   // Gestor Productos
   function openProduct(index = null) {
@@ -67,14 +94,10 @@ export default function Administracion() {
       imagen: (form.get('imagen') || '').toString().trim(),
     };
 
-    const next = [...products];
-    if (productModal.index === null) {
-      next.push({ id: Date.now(), ...product });
-    } else {
-      next[productModal.index] = { ...next[productModal.index], ...product };
-    }
-
-    saveProducts(next);
+    (async () => { try {
+      let saved; if (productModal.index === null) saved = await api.createProduct(product); else saved = await api.updateProduct(products[productModal.index].id, product);
+      const next = productModal.index === null ? [...products, saved] : products.map((p,i) => i === productModal.index ? saved : p); saveProducts(next); setApiError('');
+    } catch (e) { setApiError(`No se pudo guardar el producto: ${e.message}`); } })();
     setProductModal(null);
   }
 
@@ -85,7 +108,7 @@ export default function Administracion() {
 
   function handleExecuteDeleteProduct() {
     if (deleteProductConfirm !== null) {
-      saveProducts(products.filter((_, i) => i !== deleteProductConfirm.index));
+      (async () => { try { const p = products[deleteProductConfirm.index]; await api.deleteProduct(p.id); saveProducts(products.filter((_, i) => i !== deleteProductConfirm.index)); setApiError(''); } catch(e) { setApiError(`No se pudo eliminar: ${e.message}`); } })();
       setDeleteProductConfirm(null);
     }
   }
@@ -101,12 +124,7 @@ export default function Administracion() {
 
     const form = new FormData(event.currentTarget);
     const catName = (form.get('nombre') || '').toString().trim();
-    const next = [...categories];
-
-    if (categoryModal.index === null) next.push(catName);
-    else next[categoryModal.index] = catName;
-
-    saveCategories(next);
+    (async () => { try { let rows; if (categoryModal.index === null) { await api.createCategory(catName); } else { const old = categoryRows.find(c => c.nombre === categories[categoryModal.index]); await api.updateCategory(old.id, catName); } rows = await api.categories(); setCategoryRows(rows); saveCategories(rows.map(c=>c.nombre)); setApiError(''); } catch(e) { setApiError(`No se pudo guardar categoría: ${e.message}`); } })();
     setCategoryModal(null);
   }
 
@@ -117,7 +135,7 @@ export default function Administracion() {
 
   function handleExecuteDeleteCategory() {
     if (deleteCategoryConfirm !== null) {
-      saveCategories(categories.filter((_, i) => i !== deleteCategoryConfirm.index));
+      (async () => { try { const old = categoryRows.find(c => c.nombre === categories[deleteCategoryConfirm.index]); if(old) await api.deleteCategory(old.id); const rows=await api.categories(); setCategoryRows(rows); saveCategories(rows.map(c=>c.nombre)); setApiError(''); } catch(e) { setApiError(`No se pudo eliminar categoría: ${e.message}`); } })();
       setDeleteCategoryConfirm(null);
     }
   }
@@ -131,36 +149,36 @@ export default function Administracion() {
     }
   }
 
-  function submitUser(event) {
+  async function submitUser(event) {
     event.preventDefault();
     if (!userModal) return;
 
     const form = new FormData(event.currentTarget);
     const email = (form.get('email') || '').toString().trim().toLowerCase();
     const password = (form.get('password') || '').toString();
-    const existingAccount = readStorage('usuarios', []).find((account) => account.email === (userModal?.email || '').toLowerCase());
-    const user = {
+    const userData = {
       nombre: (form.get('nombre') || '').toString().trim(),
       email,
       rol: form.get('rol') || 'Cliente',
-      ...(password ? { password } : existingAccount?.password ? { password: existingAccount.password } : {}),
+      password,
     };
-    if (userModal.index === null && !password) return;
-    const accounts = readStorage('usuarios', []);
-    const accountIndex = accounts.findIndex((account) => account.email === (userModal?.email || '').toLowerCase() || account.email === email);
-    if (accountIndex >= 0) accounts[accountIndex] = { ...accounts[accountIndex], ...user };
-    else if (password) accounts.push(user);
-    writeStorage('usuarios', accounts);
-
-    const next = [...users];
-    if (userModal.index === null) {
-      next.push(user);
-    } else {
-      next[userModal.index] = user;
+    if (userModal.index === null && password.length < 4) {
+      setApiError('La contraseña debe tener al menos 4 caracteres.');
+      return;
     }
 
-    saveUsers(next);
-    setUserModal(null);
+    try {
+      if (userModal.index === null) {
+        await api.createUser(userData);
+      } else {
+        await api.updateUser(userModal.id, userData);
+      }
+      setUsers(await api.users());
+      setApiError('');
+      setUserModal(null);
+    } catch (error) {
+      setApiError(`No se pudo guardar el usuario: ${error.message}`);
+    }
   }
 
   // Confirmación Eliminación Usuario
@@ -168,17 +186,34 @@ export default function Administracion() {
     setDeleteUserConfirm({ index, nombre: users[index]?.nombre || 'este usuario' });
   }
 
-  function handleExecuteDeleteUser() {
+  async function handleExecuteDeleteUser() {
     if (deleteUserConfirm !== null) {
-      saveUsers(users.filter((_, i) => i !== deleteUserConfirm.index));
-      setDeleteUserConfirm(null);
+      try {
+        const selectedUser = users[deleteUserConfirm.index];
+        await api.deleteUser(selectedUser.id);
+        saveUsers(users.filter((item) => item.id !== selectedUser.id));
+        setApiError('');
+      } catch (error) {
+        setApiError(`No se pudo eliminar el usuario: ${error.message}`);
+      } finally {
+        setDeleteUserConfirm(null);
+      }
     }
   }
 
   // Filtrado Productos Críticos (Stock menor a 5)
   const displayedProducts = filterCritical ? products.filter(p => (p.stock ?? 10) < 5) : products;
 
+  if (authLoading || loadingData) {
+    return <div className="container py-5 text-white">Cargando administración desde MySQL...</div>;
+  }
+  if (!user || user.rol !== 'Administrador') {
+    return <div className="container py-5 text-white"><div className="alert alert-warning">Debes iniciar sesión con una cuenta Administrador para acceder a este apartado.</div></div>;
+  }
+
   return (
+    <div>
+      {apiError && <div className="alert alert-warning m-3">{apiError}</div>}
     <div className="container my-5 text-white">
       <h2 className="mb-4">Gestión del Sistema</h2>
 
@@ -284,10 +319,10 @@ export default function Administracion() {
                       <td><span className={`badge ${product?.stock < 5 ? 'bg-danger' : 'bg-success'}`}>{product?.stock ?? 10}</span></td>
                       <td>{typeof formatCLP === 'function' ? formatCLP(product?.precio) : `$${product?.precio}`}</td>
                       <td className="text-center">
-                        <button type="button" className="btn btn-sm btn-outline-warning me-1" onClick={() => openProduct(index)}>
+                        <button type="button" className="btn btn-sm btn-outline-warning me-1" onClick={() => openProduct(products.findIndex((item) => item.id === product.id))}>
                           <i className="bi bi-pencil" /> Editar
                         </button>
-                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => confirmRemoveProduct(index)}>
+                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => confirmRemoveProduct(products.findIndex((item) => item.id === product.id))}>
                           <i className="bi bi-trash" /> Eliminar
                         </button>
                       </td>
@@ -373,7 +408,7 @@ export default function Administracion() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => (
+                {orders.length === 0 ? <tr><td colSpan="5" className="text-center">Todavía no hay pedidos registrados en el backend.</td></tr> : orders.map((o) => (
                   <tr key={o.id}>
                     <td>{o.id}</td>
                     <td>{o.cliente}</td>
@@ -395,9 +430,9 @@ export default function Administracion() {
         <section>
           <div className="card bg-dark text-white border-secondary p-4">
             <h4>Perfil de Administrador</h4>
-            <p className="mt-3"><strong>Nombre:</strong> Cristian Orlando</p>
-            <p><strong>Correo Electrónico:</strong> cristian@admin.com</p>
-            <p><strong>Rol:</strong> Administrador</p>
+            <p className="mt-3"><strong>Nombre:</strong> {user?.nombre}</p>
+            <p><strong>Correo Electrónico:</strong> {user?.email}</p>
+            <p><strong>Rol:</strong> {user?.rol}</p>
           </div>
         </section>
       )}
@@ -550,7 +585,7 @@ export default function Administracion() {
                   </div>
                   <div className="mb-3">
                     <label htmlFor="userPassword" className="form-label">Contraseña {userModal?.index !== null ? '(dejar vacía para conservar la actual)' : ''}</label>
-                    <input name="password" defaultValue="" id="userPassword" type="password" className="form-control" minLength="3" autoComplete="new-password" placeholder={userModal?.index === null ? 'Contraseña para iniciar sesión' : 'Nueva contraseña (opcional)'} required={userModal?.index === null} />
+                    <input name="password" defaultValue="" id="userPassword" type="password" className="form-control" minLength="4" autoComplete="new-password" placeholder={userModal?.index === null ? 'Contraseña para iniciar sesión' : 'Nueva contraseña (opcional)'} required={userModal?.index === null} />
                     {userModal?.index === null && <small className="text-secondary">La contraseña se usará para iniciar sesión en Yakarta.</small>}
                   </div>
                   <div className="mb-3">
@@ -606,6 +641,7 @@ export default function Administracion() {
               </div>
               <div className="modal-body">
                 <p><strong>Cliente:</strong> {invoiceModal?.cliente}</p>
+                <p><strong>Estado:</strong> {invoiceModal?.estado || 'Sin estado'}</p>
                 <p><strong>Fecha:</strong> {invoiceModal?.fecha}</p>
                 <hr />
                 <h6>Detalle de Productos:</h6>
@@ -657,6 +693,7 @@ export default function Administracion() {
       {(Boolean(productModal) || Boolean(userModal) || Boolean(categoryModal) || Boolean(invoiceModal) || Boolean(userHistoryModal) || Boolean(deleteProductConfirm) || Boolean(deleteUserConfirm) || Boolean(deleteCategoryConfirm)) && (
         <div className="modal-backdrop fade show" />
       )}
+    </div>
     </div>
   );
 }

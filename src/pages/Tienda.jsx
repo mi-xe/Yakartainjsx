@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { defaultProducts } from '../lib/products';
-import { apiRequest } from '../lib/api';
-import { formatCLP, getProductPrice, readStorage, writeStorage } from '../lib/storage';
+import { api } from '../lib/api';
+import { formatCLP, getProductPrice } from '../lib/utils';
 
 const previewImages = {
   'dead by daylight': ['/imgdbd/856303.webp', '/imgdbd/dead-by-daylight-2v8-mode-teaser-trailer-screenshots_uf26.jpg', '/imgdbd/dead-by-daylight---gameplay---6-1920x1080-0b71c2ea2600.png'],
@@ -91,26 +90,29 @@ export default function Tienda() {
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeShot, setActiveShot] = useState(0);
-  const [products, setProducts] = useState(() => {
-    const saved = readStorage('productosTienda', null);
-    return (saved?.length ? saved : defaultProducts).map((product) => {
-      const original = defaultProducts.find((item) => item.id === product.id || item.nombre === product.nombre);
-      return { ...original, ...product, categoria: product.categoria || original?.categoria || 'Otros' };
-    });
-  });
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
     let active = true;
-    apiRequest('products').then(({ products: dbProducts }) => {
-      if (!active || !dbProducts.length) return;
-      const mapped = dbProducts.map((p) => ({ ...p, enOferta: Boolean(Number(p.enOferta)), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), precio: Number(p.precio) }));
-      setProducts(mapped);
-      writeStorage('productosTienda', mapped);
-    }).catch(() => {});
+    api.products()
+      .then((rows) => {
+        if (!active) return;
+        setProducts(rows.map((product) => ({
+          ...product,
+          enOferta: Boolean(Number(product.enOferta)),
+          precioOferta: product.precioOferta == null ? null : Number(product.precioOferta),
+          precio: Number(product.precio),
+          stock: Number(product.stock ?? 0),
+        })));
+      })
+      .catch((error) => {
+        if (active) setSuccessMessage(`No se pudo cargar el catálogo: ${error.message}`);
+      })
+      .finally(() => active && setLoadingProducts(false));
     return () => { active = false; };
   }, []);
 
-  useEffect(() => writeStorage('productosTienda', products), [products]);
   useEffect(() => {
     const requested = searchParams.get('juego');
     if (!requested) return;
@@ -130,14 +132,14 @@ export default function Tienda() {
     return exact?.[1] || [product.imagen ? `/${product.imagen}` : '/imgtienda/peak.jpg', ...generic].filter((src, index, list) => list.indexOf(src) === index).slice(0, 3);
   }
 
-  function addToCart(product, goToCart = false) {
-    const cart = readStorage('carrito', []);
-    const existing = cart.find((item) => item.nombre === product.nombre);
-    if (existing) existing.cantidad += 1;
-    else cart.push({ ...product, precio: getProductPrice(product), cantidad: 1 });
-    writeStorage('carrito', cart);
-    setSuccessMessage(`${product.nombre} se agregó al carrito.`);
-    if (goToCart) navigate('/carrito');
+  async function addToCart(product, goToCart = false) {
+    try {
+      await api.addToCart(product.id, 1);
+      setSuccessMessage(`${product.nombre} se agregó al carrito.`);
+      if (goToCart) navigate('/carrito');
+    } catch (error) {
+      setSuccessMessage(error.message || 'No se pudo agregar el producto al carrito.');
+    }
   }
 
   function closePreview() {
@@ -159,6 +161,8 @@ export default function Tienda() {
         <span className="store-count">{visibleProducts.length} juegos</span>
       </section>
       <section className="store-grid" aria-label="Catálogo de juegos">
+        {loadingProducts && <p className="text-white">Cargando catálogo desde MySQL...</p>}
+        {!loadingProducts && visibleProducts.length === 0 && <p className="text-white">No hay juegos que coincidan con tu búsqueda.</p>}
         {visibleProducts.map((product) => {
           const price = getProductPrice(product);
           const shots = getShots(product);
