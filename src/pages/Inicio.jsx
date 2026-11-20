@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const featuredGames = [
@@ -12,6 +12,31 @@ const featuredGames = [
 
 export default function Inicio() {
   const [active, setActive] = useState(1);
+
+  useEffect(() => {
+    const secretWord = 'daytona';
+    let typedKeys = '';
+    let lastKeyTime = 0;
+
+    function handleSecretWord(event) {
+      if (event.ctrlKey || event.altKey || event.metaKey || event.key.length !== 1 || !/[a-z]/i.test(event.key)) {
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastKeyTime > 2500) typedKeys = '';
+      lastKeyTime = now;
+      typedKeys = `${typedKeys}${event.key.toLowerCase()}`.slice(-secretWord.length);
+
+      if (typedKeys === secretWord) {
+        window.location.assign('/daytona/index.html');
+      }
+    }
+
+    window.addEventListener('keydown', handleSecretWord);
+    return () => window.removeEventListener('keydown', handleSecretWord);
+  }, []);
+
   const move = (direction) => setActive((current) => (current + direction + featuredGames.length) % featuredGames.length);
   const ordered = [...featuredGames.slice(active), ...featuredGames.slice(0, active)];
 
