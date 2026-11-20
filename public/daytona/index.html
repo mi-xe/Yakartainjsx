@@ -69,10 +69,10 @@
         <div class="edition"><span class="checkers" aria-hidden="true"></span> POWER EDITION <span class="checkers" aria-hidden="true"></span></div>
         <h1 id="gameTitle" class="game-logo"><img src="img/daytona-usa-2-logo.png" width="640" height="246" alt="Daytona USA 2"></h1>
         <p id="message" class="message">Choose your ROM to bring the arcade to life.</p>
-        <label class="dropzone" id="dropzone" for="romInput" tabindex="0" role="button" aria-label="Choose a Daytona USA 2 Power Edition ROM ZIP">
-          <input type="file" id="romInput" tabindex="-1" accept=".zip,application/zip">
+        <label class="dropzone is-disabled" id="dropzone" aria-disabled="true" tabindex="-1" role="note" aria-label="Please wait while Daytona USA 2 loads">
+          <input type="file" id="romInput" tabindex="-1" accept=".zip,application/zip" disabled>
           <span class="file-icon" aria-hidden="true">↥</span>
-          <span><strong id="fileLabel">Choose ROM ZIP</strong><small>or drop your file here</small></span>
+          <span><strong id="fileLabel">Please</strong><small>Wait a moment, this take long time to load :3</small></span>
           <span class="file-arrow" aria-hidden="true">↗</span>
         </label>
         <div class="rom-meta" id="romMeta" aria-live="polite">dayto2pe.zip · 1998 · Your file stays on this device.</div>
@@ -80,7 +80,7 @@
         <div id="playerModes" class="player-modes" hidden>
           <button id="singlePlayer" class="launch-btn ui-button ui-primary" type="button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 21v-3a7 7 0 0 1 14 0v3"/></svg>SINGLE PLAYER</button>
           <button id="multiplayerPlayer" class="launch-btn ui-button ui-primary" type="button"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M17 4a3 3 0 0 1 0 6M18 13a6 6 0 0 1 4 6v2"/></svg>MULTIPLAYER</button>
-          <div class="rom-change-row"><button id="changeROM" type="button" class="ui-button ui-quiet" title="Choose another ROM ZIP"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h6l2 3h10v13H3V7ZM7 13h10m-3-3 3 3-3 3"/></svg>Change ROM</button></div>
+          <div class="rom-change-row"><button id="changeROM" type="button" class="ui-button ui-quiet" title="Return to Yakarta">Exit</button></div>
         </div>
         <div id="mpUtilities" class="mp-utilities" hidden></div>
         <section id="singlePlayerPanel" class="single-player-panel" hidden aria-labelledby="singleTitle">
@@ -176,7 +176,6 @@
         <p class="service-note"><kbd>F2</kbd><span>Opens the original arcade TEST menu. <b>F3</b> is the service button.</span></p>
         <p class="guide-footer">The car starts in neutral: choose a gear before you accelerate. <kbd>Esc</kbd> brings this menu back.</p>
       </section>
-      <aside id="projectSupport" class="project-support" aria-label="Support this project"><a class="ui-button ui-secondary" href="https://github.com/sponsors/johannruiz" target="_blank" rel="noopener noreferrer" aria-describedby="projectSupportText"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>Donate here</a><p id="projectSupportText">Support the development and maintenance of this project.</p></aside>
       </div>
       <section id="hostConsole" class="rom-modal connection-console" hidden aria-labelledby="hostConsoleTitle">
         <div class="modal-stripe" aria-hidden="true"></div>

@@ -40,6 +40,7 @@ export default function Navbar() {
             <li className="nav-item"><Link className="nav-link" to="/blogs">Novedades</Link></li>
             <li className="nav-item"><Link className="nav-link" to="/contactanos">Contacto</Link></li>
             <li className="nav-item"><Link className="nav-link" to="/somos">Nosotros</Link></li>
+            <li className="nav-item"><a className="nav-link" href={`${import.meta.env.BASE_URL}daytona/index.html`}>Emulador</a></li>
           </ul>
           <ul className="navbar-nav ms-auto align-items-center gap-2">
             <li className="nav-item">

@@ -276,18 +276,25 @@ async function importZip(file) {
 // The D2 ZIP is ~89 MB: IndexedDB needs longer than the 5 s D1 default.
 const romMemory = createROMMemory({ store: createROMStore({ timeoutMs: 60000 }), load: f => importZip(f), onBusy: b => { $('dropzone').classList.toggle('busy', b); }, onWarning: e => console.warn(e) });
 $('romInput').addEventListener('change', e => { const f = e.target.files[0]; if (f) { if (started) restartWith({ view: 'modes' }); else romMemory.select(f); } e.target.value = ''; });
-// Yakarta integration: load the ROM supplied by the site owner from this same origin.
+// Yakarta integration: always load the bundled ROM automatically on entry.
 (async () => {
-  if (params.has('manualrom')) return;
   try {
-    status('Preparando ROM local…');
-    const response = await fetch('./dayto2pe.zip');
-    if (!response.ok) throw new Error('No se pudo cargar la ROM local.');
-    const file = new File([await response.blob()], 'dayto2pe.zip', { type: 'application/zip' });
-    await romMemory.select(file);
+    status('Preparando Daytona USA 2…');
+    // Wait for WebAssembly/WebGPU engine initialization before importing the ROM.
+    await engineReady;
+    const romURL = new URL('./dayto2pe.zip', document.baseURI);
+    const response = await fetch(romURL, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`No se pudo cargar dayto2pe.zip (HTTP ${response.status}).`);
+    }
+    const blob = await response.blob();
+    if (!blob.size) throw new Error('dayto2pe.zip está vacío.');
+    const file = new File([blob], 'dayto2pe.zip', { type: 'application/zip' });
+    const result = await importZip(file);
+    if (!result.ok) throw new Error('La ROM dayto2pe.zip no superó la verificación.');
   } catch (error) {
     console.error('[Yakarta ROM]', error);
-    status('No se pudo cargar la ROM automáticamente. Selecciónala desde el menú.');
+    status(`No se pudo cargar la ROM automáticamente: ${error.message}`);
   }
 })();
 
@@ -295,7 +302,7 @@ $('dropzone').addEventListener('dragover', e => { e.preventDefault(); $('dropzon
 $('dropzone').addEventListener('dragleave', () => $('dropzone').classList.remove('dragging'));
 $('dropzone').addEventListener('drop', e => { e.preventDefault(); $('dropzone').classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (f && !started) romMemory.select(f); });
 $('dropzone').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('romInput').click(); } });
-$('changeROM').addEventListener('click', () => { if (started) { restartWith({ view: 'rom' }); return; } romReady = false; view('rom'); $('romInput').click(); });
+$('changeROM').addEventListener('click', () => { window.location.assign('/'); });
 // Development: ?devroms=1 loads prepared regions served by web/tools/serve.js.
 async function devRoms() {
   await engineReady;

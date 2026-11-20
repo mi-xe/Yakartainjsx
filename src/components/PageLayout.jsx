@@ -24,7 +24,7 @@ function SiteFooter() {
       </div>
       <div className="site-footer-bottom">
         <span>© {new Date().getFullYear()} Yakarta. Todos los derechos reservados.</span>
-        <a className="footer-easter-egg" href="/daytona/" aria-label="Experiencia arcade">·</a>
+        <a className="footer-easter-egg" href={`${import.meta.env.BASE_URL}daytona/index.html`} aria-label="Abrir emulador Daytona USA 2">Emulador arcade</a>
       </div>
     </footer>
   );

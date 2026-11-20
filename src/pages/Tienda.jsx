@@ -67,17 +67,6 @@ const descriptions = {
   'gta vi': 'Vice City, Estados Unidos. Jason y Lucia siempre han sabido que llevan todas las de perder. Pero cuando un golpe que parecía fácil sale mal, terminan atrapados en el lado más oscuro del lugar más soleado de Estados Unidos, en medio de una conspiración criminal que se extiende por todo el estado de Leonida , y obligados a confiar el uno en el otro más que nunca si quieren salir con vida.',
   'blue alive condemnation 2': 'Tras el aclamado exito de "Red dead redemption 2", Rockstar games presenta: Blue alive condemnation 2. Enfrentate cara a cara con aquellos personajes iconicos y nuevos con este roaster de mas de 20 personajes unicos',
 
-
-
-
-
-
-
-
-  
-
-
-
 };
 const normalize = (value = '') => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
