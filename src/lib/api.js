@@ -1,86 +1,70 @@
-// Cliente de la API PHP + MySQL. Todas las peticiones envían la cookie de sesión PHP.
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/backend/api.php';
+// Cliente REST compartido por React. Las sesiones se autentican con cookie HttpOnly del backend.
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-async function request(action, { method = 'GET', data, id } = {}) {
-  const url = new URL(API_URL, window.location.origin);
-  url.searchParams.set('action', action);
-  if (id !== undefined && id !== null) url.searchParams.set('id', String(id));
-
-  let response;
-  try {
-    response = await fetch(url.toString(), {
-      method,
-      credentials: 'include',
-      headers: data !== undefined ? { 'Content-Type': 'application/json' } : {},
-      body: data !== undefined ? JSON.stringify(data) : undefined,
-    });
-  } catch {
-    throw new Error(`No se pudo contactar con el backend PHP (${API_URL}). Comprueba que el servidor PHP esté iniciado.`);
-  }
-
-  const raw = await response.text();
-  let result;
-  try {
-    result = raw ? JSON.parse(raw) : {};
-  } catch {
-    throw new Error('El backend no devolvió JSON válido. Revisa la URL de la API y los errores de PHP.');
-  }
-
-  if (!response.ok || result.ok === false) {
-    const error = new Error(result.message || `Error HTTP ${response.status}`);
+async function request(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  const text = await response.text();
+  let result = null;
+  try { result = text ? JSON.parse(text) : null; } catch { result = text; }
+  if (!response.ok) {
+    const error = new Error(result?.message || result?.error || `Error HTTP ${response.status}`);
     error.status = response.status;
-    error.code = result.code;
-    error.details = result;
+    error.data = result;
     throw error;
   }
   return result;
 }
 
-const get = (action) => request(action);
-const post = (action, data = {}) => request(action, { method: 'POST', data });
-const put = (action, id, data) => request(action, { method: 'PUT', id, data });
-const remove = (action, id) => request(action, { method: 'DELETE', id });
+const json = (method, data) => ({ method, body: JSON.stringify(data ?? {}) });
 
 export const api = {
-  health: () => get('health'),
+  health: () => request('/health'),
+  products: () => request('/productos'),
+  product: (id) => request(`/productos/${id}`),
+  createProduct: (product) => request('/productos', json('POST', product)),
+  updateProduct: (id, product) => request(`/productos/${id}`, json('PUT', product)),
+  deleteProduct: (id) => request(`/productos/${id}`, { method: 'DELETE' }),
 
-  register: async (data) => (await post('register', data)),
-  login: async (data) => (await post('login', data)),
-  logout: () => post('logout'),
-  me: async () => (await get('me')).user,
+  categories: () => request('/categorias'),
+  createCategory: (nombre) => request('/categorias', json('POST', { nombre })),
+  updateCategory: (id, nombre) => request(`/categorias/${id}`, json('PUT', { nombre })),
+  deleteCategory: (id) => request(`/categorias/${id}`, { method: 'DELETE' }),
 
-  products: async () => (await get('products')).products,
-  createProduct: async (product) => (await post('products', product)).product,
-  updateProduct: async (id, product) => (await put('products', id, product)).product,
-  deleteProduct: (id) => remove('products', id),
+  register: (data) => request('/auth/registro', json('POST', data)),
+  login: (data) => request('/auth/login', json('POST', data)),
+  me: () => request('/auth/me'),
+  logout: () => request('/auth/logout', json('POST', {})),
+  addFunds: (amount) => request('/auth/fondos', json('POST', { amount })),
 
-  categories: async () => (await get('categories')).categories,
-  createCategory: (nombre) => post('categories', { nombre }),
-  updateCategory: (id, nombre) => put('categories', id, { nombre }),
-  deleteCategory: (id) => remove('categories', id),
+  users: () => request('/usuarios'),
+  createUser: (data) => request('/usuarios', json('POST', data)),
+  updateUser: (id, data) => request(`/usuarios/${id}`, json('PUT', data)),
+  deleteUser: (id) => request(`/usuarios/${id}`, { method: 'DELETE' }),
 
-  users: async () => (await get('users')).users,
-  createUser: (data) => post('users', data),
-  updateUser: (id, data) => put('users', id, data),
-  deleteUser: (id) => remove('users', id),
+  getCart: () => request('/carrito'),
+  addCartItem: (productoId, cantidad = 1) => request('/carrito', json('POST', { productoId, cantidad })),
+  updateCartItem: (productoId, cantidad) => request(`/carrito/items/${productoId}`, json('PUT', { productoId, cantidad })),
+  removeCartItem: (productoId) => request(`/carrito/items/${productoId}`, { method: 'DELETE' }),
+  clearCart: () => request('/carrito', { method: 'DELETE' }),
 
-  cart: () => get('cart'),
-  addToCart: (productoId, cantidad = 1) => post('cart-add', { productoId, cantidad }),
-  removeFromCart: (productoId) => post('cart-remove', { productoId }),
-  clearCart: () => post('cart-clear'),
+  getAddress: () => request('/direccion'),
+  saveAddress: (data) => request('/direccion', json('PUT', data)),
+  sendContact: (data) => request('/contacto', json('POST', data)),
 
-  address: async () => (await get('address')).address,
-  saveAddress: (address) => post('address', address),
-
-  balance: async () => (await get('balance')).saldo,
-  addFunds: async (monto) => (await post('funds-add', { monto })).saldo,
-
-  submitContact: (data) => post('contact', data),
-  orders: async () => (await get('orders')).orders,
-  checkout: async () => (await post('checkout')).order,
+  orders: () => request('/pedidos'),
+  order: (id) => request(`/pedidos/${id}`),
+  createOrder: () => request('/pedidos', json('POST', {})),
+  deleteOrder: (id) => request(`/pedidos/${id}`, { method: 'DELETE' }),
 };
 
-// Compatibilidad para las dos pantallas que anteriormente usaban apiRequest.
 export async function apiRequest(action, data = null) {
   if (action === 'products') return { products: await api.products() };
   if (action === 'register') return api.register(data);

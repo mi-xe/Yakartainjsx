@@ -1,28 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatCLP } from '../lib/storage';
 import { useAuth } from '../context/AuthContext';
-import { formatCLP } from '../lib/utils';
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, logout: endSession } = useAuth();
-  const [balance, setBalance] = useState(0);
+  const { user, logout } = useAuth();
 
-  useEffect(() => {
-    let active = true;
-    if (user?.rol === 'Cliente') {
-      api.balance().then((value) => active && setBalance(value)).catch(() => active && setBalance(0));
-    } else {
-      setBalance(0);
-    }
-    return () => { active = false; };
-  }, [user, location.pathname]);
-
-  async function logout() {
-    await endSession();
-    navigate('/');
+  async function handleLogout() {
+    try { await logout(); } finally { navigate('/'); }
   }
 
   return (
@@ -40,14 +25,9 @@ export default function Navbar() {
             <li className="nav-item"><Link className="nav-link" to="/blogs">Novedades</Link></li>
             <li className="nav-item"><Link className="nav-link" to="/contactanos">Contacto</Link></li>
             <li className="nav-item"><Link className="nav-link" to="/somos">Nosotros</Link></li>
-            <li className="nav-item"><a className="nav-link" href={`${import.meta.env.BASE_URL}daytona/index.html`}>Emulador</a></li>
           </ul>
           <ul className="navbar-nav ms-auto align-items-center gap-2">
-            <li className="nav-item">
-              <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 navbar-action" to="/carrito">
-                <i className="bi bi-cart3" /> <span>Carrito</span>
-              </Link>
-            </li>
+            <li className="nav-item"><Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 navbar-action" to="/carrito"><i className="bi bi-cart3" /> <span>Carrito</span></Link></li>
             <li className="nav-item">
               {user ? (
                 <div className="dropdown">
@@ -59,20 +39,16 @@ export default function Navbar() {
                       <li><Link className="dropdown-item text-warning fw-bold" to="/admin"><i className="bi bi-shield-lock-fill me-2" />Panel Admin</Link></li>
                     ) : (
                       <>
-                        <li><span className="dropdown-item-text text-success fw-bold"><i className="bi bi-wallet2 me-2" />Saldo: {formatCLP(balance)}</span></li>
+                        <li><span className="dropdown-item-text text-success fw-bold"><i className="bi bi-wallet2 me-2" />Saldo: {formatCLP(user.saldo)}</span></li>
                         <li><Link className="dropdown-item text-info fw-bold" to="/fondos"><i className="bi bi-plus-circle me-2" />Agregar fondos</Link></li>
                         <li><Link className="dropdown-item text-info fw-bold" to="/compras"><i className="bi bi-bag-check-fill me-2" />Mis Compras Recientes</Link></li>
                       </>
                     )}
                     <li><hr className="dropdown-divider" /></li>
-                    <li><button className="dropdown-item text-danger fw-bold" type="button" onClick={logout}><i className="bi bi-box-arrow-right me-2" />Cerrar Sesión</button></li>
+                    <li><button className="dropdown-item text-danger fw-bold" type="button" onClick={handleLogout}><i className="bi bi-box-arrow-right me-2" />Cerrar Sesión</button></li>
                   </ul>
                 </div>
-              ) : (
-                <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 navbar-action" to="/login">
-                  <i className="bi bi-box-arrow-in-right" /> <span>Iniciar Sesión</span>
-                </Link>
-              )}
+              ) : <Link className="btn btn-outline-light btn-navbar-custom d-flex align-items-center justify-content-center gap-2 navbar-action" to="/login"><i className="bi bi-box-arrow-in-right" /> <span>Iniciar Sesión</span></Link>}
             </li>
           </ul>
         </div>

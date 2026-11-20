@@ -23,5 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# Entorno local (no subir credenciales)
-.env
+# Local environment values
+.env.local
+.env.*.local
+# Java build output
+backend/target/

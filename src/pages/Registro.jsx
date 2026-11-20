@@ -17,7 +17,7 @@ export default function Registro() {
     setLoading(true);
     try {
       await apiRequest('register', { nombre: form.nombre.trim(), email: form.email.trim().toLowerCase(), password: form.password });
-      navigate('/login', { state: { registered: true } });
+      navigate('/login', { state: { registrationSuccess: true } });
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -31,7 +31,7 @@ export default function Registro() {
           <form onSubmit={submit}>
             <div className="mb-3"><label htmlFor="nombre" className="form-label">Nombre Completo</label><input name="nombre" value={form.nombre} onChange={update} type="text" id="nombre" className="form-control" required /></div>
             <div className="mb-3"><label htmlFor="email" className="form-label">Correo Electrónico</label><input name="email" value={form.email} onChange={update} type="email" id="email" className="form-control" required /></div>
-            <div className="mb-3"><label htmlFor="password" className="form-label">Contraseña</label><input name="password" value={form.password} onChange={update} type="password" id="password" className="form-control" required /></div>
+            <div className="mb-3"><label htmlFor="password" className="form-label">Contraseña</label><input name="password" value={form.password} onChange={update} type="password" id="password" className="form-control" minLength={6} required /></div>
             <div className="mb-4"><label htmlFor="confirmPassword" className="form-label">Confirmar Contraseña</label><input name="confirmPassword" value={form.confirmPassword} onChange={update} type="password" id="confirmPassword" className="form-control" required /></div>
             <button type="submit" className="btn btn-primary w-100 fw-bold">{loading ? 'Registrando...' : 'Registrarse'}</button>
           </form>

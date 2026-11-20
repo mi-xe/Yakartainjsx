@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
-import { formatCLP, getProductPrice } from '../lib/utils';
+import { formatCLP, getProductPrice } from '../lib/storage';
 
 const previewImages = {
   'dead by daylight': ['/imgdbd/856303.webp', '/imgdbd/dead-by-daylight-2v8-mode-teaser-trailer-screenshots_uf26.jpg', '/imgdbd/dead-by-daylight---gameplay---6-1920x1080-0b71c2ea2600.png'],
@@ -67,6 +67,17 @@ const descriptions = {
   'gta vi': 'Vice City, Estados Unidos. Jason y Lucia siempre han sabido que llevan todas las de perder. Pero cuando un golpe que parecía fácil sale mal, terminan atrapados en el lado más oscuro del lugar más soleado de Estados Unidos, en medio de una conspiración criminal que se extiende por todo el estado de Leonida , y obligados a confiar el uno en el otro más que nunca si quieren salir con vida.',
   'blue alive condemnation 2': 'Tras el aclamado exito de "Red dead redemption 2", Rockstar games presenta: Blue alive condemnation 2. Enfrentate cara a cara con aquellos personajes iconicos y nuevos con este roaster de mas de 20 personajes unicos',
 
+
+
+
+
+
+
+
+  
+
+
+
 };
 const normalize = (value = '') => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
@@ -74,6 +85,7 @@ export default function Tienda() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [successMessage, setSuccessMessage] = useState('');
+  const [apiError, setApiError] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Todas');
   const [offerOnly, setOfferOnly] = useState(false);
   const [search, setSearch] = useState('');
@@ -84,21 +96,13 @@ export default function Tienda() {
 
   useEffect(() => {
     let active = true;
-    api.products()
-      .then((rows) => {
-        if (!active) return;
-        setProducts(rows.map((product) => ({
-          ...product,
-          enOferta: Boolean(Number(product.enOferta)),
-          precioOferta: product.precioOferta == null ? null : Number(product.precioOferta),
-          precio: Number(product.precio),
-          stock: Number(product.stock ?? 0),
-        })));
-      })
-      .catch((error) => {
-        if (active) setSuccessMessage(`No se pudo cargar el catálogo: ${error.message}`);
-      })
-      .finally(() => active && setLoadingProducts(false));
+    api.products().then((rows) => {
+      if (!active) return;
+      const mapped = rows.map((p) => ({ ...p, enOferta: Boolean(p.enOferta), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), precio: Number(p.precio) }));
+      setProducts(mapped);
+      setApiError('');
+    }).catch((error) => { if (active) { setProducts([]); setApiError(`No se pudo cargar el catálogo desde MySQL: ${error.message}`); } })
+      .finally(() => { if (active) setLoadingProducts(false); });
     return () => { active = false; };
   }, []);
 
@@ -123,11 +127,13 @@ export default function Tienda() {
 
   async function addToCart(product, goToCart = false) {
     try {
-      await api.addToCart(product.id, 1);
+      await api.addCartItem(product.id, 1);
+      setApiError('');
       setSuccessMessage(`${product.nombre} se agregó al carrito.`);
       if (goToCart) navigate('/carrito');
     } catch (error) {
-      setSuccessMessage(error.message || 'No se pudo agregar el producto al carrito.');
+      setApiError(error.message || 'No se pudo agregar el producto al carrito.');
+      setSuccessMessage('');
     }
   }
 
@@ -142,6 +148,7 @@ export default function Tienda() {
         <div><span className="store-eyebrow">YAKARTA / CATÁLOGO</span><h1>Descubre tu próximo juego</h1><p>Explora, mira capturas y encuentra tu próxima aventura.</p></div>
         <button type="button" className="btn store-cart-btn" onClick={() => navigate('/carrito')}><i className="bi bi-cart3 me-2" />Ver carrito</button>
       </header>
+      {apiError && <div className="alert alert-warning" role="alert">{apiError}</div>}
       {successMessage && <div className="store-notice" role="status"><i className="bi bi-check-circle-fill me-2" />{successMessage}<button type="button" aria-label="Cerrar mensaje" onClick={() => setSuccessMessage('')}>×</button></div>}
       <section className="store-toolbar" aria-label="Filtros de juegos">
         <div className="store-search"><i className="bi bi-search" /><input aria-label="Buscar juego" placeholder="Buscar juegos..." value={search} onChange={(event) => setSearch(event.target.value)} /></div>
@@ -149,9 +156,8 @@ export default function Tienda() {
         <label className="store-offer-filter"><input type="checkbox" checked={offerOnly} onChange={(event) => setOfferOnly(event.target.checked)} /> Solo ofertas</label>
         <span className="store-count">{visibleProducts.length} juegos</span>
       </section>
+      {loadingProducts && <p className="text-center text-secondary py-4" role="status">Cargando catálogo desde MySQL...</p>}
       <section className="store-grid" aria-label="Catálogo de juegos">
-        {loadingProducts && <p className="text-white">Cargando catálogo desde MySQL...</p>}
-        {!loadingProducts && visibleProducts.length === 0 && <p className="text-white">No hay juegos que coincidan con tu búsqueda.</p>}
         {visibleProducts.map((product) => {
           const price = getProductPrice(product);
           const shots = getShots(product);
@@ -170,7 +176,7 @@ export default function Tienda() {
             </div>
           </article>;
         })}
-        {!visibleProducts.length && <div className="store-empty"><i className="bi bi-controller" /><h2>No encontramos juegos</h2><p>Prueba con otro nombre o cambia los filtros.</p><button className="store-cart-btn" onClick={() => { setSearch(''); setCategoryFilter('Todas'); setOfferOnly(false); }}>Limpiar filtros</button></div>}
+        {!loadingProducts && !visibleProducts.length && <div className="store-empty"><i className="bi bi-controller" /><h2>No encontramos juegos</h2><p>Prueba con otro nombre o cambia los filtros.</p><button className="store-cart-btn" onClick={() => { setSearch(''); setCategoryFilter('Todas'); setOfferOnly(false); }}>Limpiar filtros</button></div>}
       </section>
       {selectedProduct && (() => {
         const shots = getShots(selectedProduct);

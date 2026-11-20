@@ -1,5 +1,4 @@
 import { useState } from 'react';
-
 import { api } from '../lib/api';
 
 const emptyForm = { email: '', nombre: '', telefono: '', comentario: '' };
@@ -16,18 +15,12 @@ export default function Contacto() {
   };
 
   async function submit(event) {
-    event.preventDefault();
-    setSending(true);
-    setError('');
+    event.preventDefault(); setSending(true); setError(''); setSubmitted(false);
     try {
-      await api.submitContact(form);
-      setSubmitted(true);
-      setForm(emptyForm);
-    } catch (reason) {
-      setError(reason.message || 'No se pudo enviar el mensaje.');
-    } finally {
-      setSending(false);
-    }
+      await api.sendContact({ ...form });
+      setSubmitted(true); setForm(emptyForm);
+    } catch (err) { setError(err.message || 'No se pudo enviar el mensaje.'); }
+    finally { setSending(false); }
   }
 
   return (
@@ -39,44 +32,14 @@ export default function Contacto() {
         <h4>Quieres trabajar con nosotros?</h4>
         <p>Deja tus datos aqui:</p>
       </div>
-
       <div className="formcontactanos derecha formularioContacto">
+        {submitted && <div className="alert alert-success shadow-sm border-0 mb-4" role="status"><div className="d-flex align-items-start gap-3"><i className="bi bi-check-circle-fill fs-4" aria-hidden="true" /><div className="flex-grow-1"><h5 className="alert-heading mb-1">¡Mensaje enviado correctamente!</h5><p className="mb-0">Gracias por contactarnos. Recibimos tus datos y nos pondremos en contacto contigo pronto.</p></div><button type="button" className="btn-close" aria-label="Cerrar mensaje" onClick={() => setSubmitted(false)} /></div></div>}
         {error && <div className="alert alert-danger" role="alert">{error}</div>}
-        {submitted && (
-          <div className="alert alert-success shadow-sm border-0 mb-4" role="status">
-            <div className="d-flex align-items-start gap-3">
-              <i className="bi bi-check-circle-fill fs-4" aria-hidden="true" />
-              <div className="flex-grow-1">
-                <h5 className="alert-heading mb-1">¡Mensaje enviado correctamente!</h5>
-                <p className="mb-0">Gracias por contactarnos. Recibimos tus datos y nos pondremos en contacto contigo pronto.</p>
-              </div>
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Cerrar mensaje"
-                onClick={() => setSubmitted(false)}
-              />
-            </div>
-          </div>
-        )}
-
         <form onSubmit={submit}>
-          <div className="mb-3">
-            <label htmlFor="gmail" className="form-label">Gmail</label>
-            <input name="email" value={form.email} onChange={update} id="gmail" type="email" className="form-control" placeholder="gmail.com / duoc.cl / profesor.duoc.cl" required />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="contactName" className="form-label">Nombre</label>
-            <input name="nombre" value={form.nombre} onChange={update} id="contactName" type="text" className="form-control" required />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="contactPhone" className="form-label">Telefono</label>
-            <input name="telefono" value={form.telefono} onChange={update} id="contactPhone" type="tel" className="form-control" required />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="comentario" className="form-label">Comentario</label>
-            <textarea name="comentario" value={form.comentario} onChange={update} id="comentario" className="form-control" rows="4" />
-          </div>
+          <div className="mb-3"><label htmlFor="gmail" className="form-label">Gmail</label><input name="email" value={form.email} onChange={update} id="gmail" type="email" className="form-control" placeholder="gmail.com / duoc.cl / profesor.duoc.cl" required /></div>
+          <div className="mb-3"><label htmlFor="contactName" className="form-label">Nombre</label><input name="nombre" value={form.nombre} onChange={update} id="contactName" type="text" className="form-control" required /></div>
+          <div className="mb-3"><label htmlFor="contactPhone" className="form-label">Telefono</label><input name="telefono" value={form.telefono} onChange={update} id="contactPhone" type="tel" className="form-control" required /></div>
+          <div className="mb-3"><label htmlFor="comentario" className="form-label">Comentario</label><textarea name="comentario" value={form.comentario} onChange={update} id="comentario" className="form-control" rows="4" /></div>
           <button type="submit" className="btn btn-primary" disabled={sending}>{sending ? 'Enviando...' : 'Confirmar'}</button>
         </form>
       </div>

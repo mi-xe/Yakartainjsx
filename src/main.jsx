@@ -36,7 +36,6 @@ function Routed({ component, layout = true }) {
 
 function App() {
   return (
-    <AuthProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Routed component={<Inicio />} />} />
@@ -59,8 +58,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
-    </AuthProvider>
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<AuthProvider><App /></AuthProvider>);

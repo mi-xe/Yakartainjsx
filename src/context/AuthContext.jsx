@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext({ user: null, loading: true, login: async () => {}, logout: async () => {}, refreshUser: async () => {} });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -9,41 +9,38 @@ export function AuthProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const current = await api.me();
-      setUser(current || null);
-      return current || null;
-    } catch {
-      setUser(null);
-      return null;
-    } finally {
-      setLoading(false);
+      const result = await api.me();
+      setUser(result.user || null);
+      return result.user || null;
+    } catch (error) {
+      if (error.status === 401) setUser(null);
+      throw error;
     }
   }, []);
 
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    let active = true;
+    api.me()
+      .then((result) => { if (active) setUser(result.user || null); })
+      .catch(() => { if (active) setUser(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const login = useCallback(async (credentials) => {
     const result = await api.login(credentials);
-    setUser(result.user);
+    setUser(result.user || null);
     return result.user;
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await api.logout();
-    } finally {
-      setUser(null);
-    }
+    try { await api.logout(); } finally { setUser(null); }
   }, []);
 
-  const value = useMemo(() => ({ user, loading, login, logout, setUser, refreshUser }), [user, loading, login, logout, refreshUser]);
+  const value = useMemo(() => ({ user, setUser, loading, login, logout, refreshUser }), [user, loading, login, logout, refreshUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  // Permite renderizar componentes aislados durante pruebas unitarias.
-  return context || { user: null, loading: false, login: async () => null, logout: async () => {}, setUser: () => {}, refreshUser: async () => null };
+  return useContext(AuthContext);
 }

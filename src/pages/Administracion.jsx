@@ -1,43 +1,36 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { formatCLP } from '../lib/utils';
+import { formatCLP } from '../lib/storage';
 import { useAuth } from '../context/AuthContext';
 
+
 export default function Administracion() {
-  const { user, loading: authLoading } = useAuth();
+  const { user: currentUser } = useAuth();
+  // Todos los datos administrativos se cargan desde la API conectada a MySQL.
   const [products, setProducts] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
   const [categoryRows, setCategoryRows] = useState([]);
   const [apiError, setApiError] = useState('');
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (user?.rol !== 'Administrador') { setLoadingData(false); return; }
     let alive = true;
     (async () => {
       try {
         const [productRows, categoryData, userRows, orderRows] = await Promise.all([
-          api.products(), api.categories(), api.users(), api.orders(),
+          api.products(), api.categories(), api.users(), api.orders()
         ]);
         if (!alive) return;
-        setProducts(productRows);
+        setProducts(productRows.map(p => ({ ...p, precio: Number(p.precio), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), enOferta: Boolean(p.enOferta) })));
         setCategoryRows(categoryData);
-        setCategories(categoryData.map((category) => category.nombre));
+        setCategories(categoryData.map(c => c.nombre));
         setUsers(userRows);
-        setOrders(orderRows.map((order) => ({
-          id: order.id,
-          cliente: order.usuarioEmail || `Usuario #${order.usuarioId ?? 'N/D'}`,
-          fecha: order.fecha,
-          total: Number(order.total),
-          estado: order.estado,
-          items: (order.productos || []).map((detail) => ({
-            nombre: detail.nombre,
-            cant: Number(detail.cantidad),
-            precio: Number(detail.precio),
-          })),
+        setOrders(orderRows.map(o => ({
+          id: o.id, cliente: o.usuarioEmail || `Usuario #${o.usuarioId ?? 'N/D'}`,
+          fecha: o.fecha, total: Number(o.total), estado: o.estado,
+          items: (o.productos || []).map(d => ({ nombre: d.nombre, cant: d.cantidad, precio: Number(d.precio) }))
         })));
         setApiError('');
       } catch (error) {
@@ -47,7 +40,7 @@ export default function Administracion() {
       }
     })();
     return () => { alive = false; };
-  }, [authLoading, user]);
+  }, []);
 
   // Control de Navegación: 'dashboard' | 'products' | 'categories' | 'users' | 'orders' | 'profile'
   const [tab, setTab] = useState('dashboard');
@@ -149,36 +142,34 @@ export default function Administracion() {
     }
   }
 
-  async function submitUser(event) {
+  function submitUser(event) {
     event.preventDefault();
     if (!userModal) return;
-
     const form = new FormData(event.currentTarget);
     const email = (form.get('email') || '').toString().trim().toLowerCase();
     const password = (form.get('password') || '').toString();
-    const userData = {
+    const user = {
       nombre: (form.get('nombre') || '').toString().trim(),
       email,
       rol: form.get('rol') || 'Cliente',
       password,
     };
-    if (userModal.index === null && password.length < 4) {
-      setApiError('La contraseña debe tener al menos 4 caracteres.');
-      return;
-    }
-
-    try {
-      if (userModal.index === null) {
-        await api.createUser(userData);
-      } else {
-        await api.updateUser(userModal.id, userData);
+    if (userModal.index === null && !password) return;
+    (async () => {
+      try {
+        const saved = userModal.index === null
+          ? await api.createUser(user)
+          : await api.updateUser(users[userModal.index].id, user);
+        const next = userModal.index === null
+          ? [...users, saved]
+          : users.map((current, index) => index === userModal.index ? saved : current);
+        saveUsers(next);
+        setApiError('');
+      } catch (error) {
+        setApiError(`No se pudo guardar el usuario en MySQL: ${error.message}`);
       }
-      setUsers(await api.users());
-      setApiError('');
-      setUserModal(null);
-    } catch (error) {
-      setApiError(`No se pudo guardar el usuario: ${error.message}`);
-    }
+    })();
+    setUserModal(null);
   }
 
   // Confirmación Eliminación Usuario
@@ -186,36 +177,29 @@ export default function Administracion() {
     setDeleteUserConfirm({ index, nombre: users[index]?.nombre || 'este usuario' });
   }
 
-  async function handleExecuteDeleteUser() {
+  function handleExecuteDeleteUser() {
     if (deleteUserConfirm !== null) {
-      try {
-        const selectedUser = users[deleteUserConfirm.index];
-        await api.deleteUser(selectedUser.id);
-        saveUsers(users.filter((item) => item.id !== selectedUser.id));
-        setApiError('');
-      } catch (error) {
-        setApiError(`No se pudo eliminar el usuario: ${error.message}`);
-      } finally {
-        setDeleteUserConfirm(null);
-      }
+      (async () => {
+        try {
+          const user = users[deleteUserConfirm.index];
+          await api.deleteUser(user.id);
+          saveUsers(users.filter((_, i) => i !== deleteUserConfirm.index));
+          setApiError('');
+        } catch (error) { setApiError(`No se pudo eliminar el usuario: ${error.message}`); }
+      })();
+      setDeleteUserConfirm(null);
     }
   }
 
   // Filtrado Productos Críticos (Stock menor a 5)
   const displayedProducts = filterCritical ? products.filter(p => (p.stock ?? 10) < 5) : products;
 
-  if (authLoading || loadingData) {
-    return <div className="container py-5 text-white">Cargando administración desde MySQL...</div>;
-  }
-  if (!user || user.rol !== 'Administrador') {
-    return <div className="container py-5 text-white"><div className="alert alert-warning">Debes iniciar sesión con una cuenta Administrador para acceder a este apartado.</div></div>;
-  }
-
   return (
     <div>
       {apiError && <div className="alert alert-warning m-3">{apiError}</div>}
     <div className="container my-5 text-white">
       <h2 className="mb-4">Gestión del Sistema</h2>
+      {loadingData && <p className="text-secondary" role="status">Cargando datos desde MySQL...</p>}
 
       {/* Pestañas de Navegación */}
       <ul className="nav nav-tabs mb-4">
@@ -319,10 +303,10 @@ export default function Administracion() {
                       <td><span className={`badge ${product?.stock < 5 ? 'bg-danger' : 'bg-success'}`}>{product?.stock ?? 10}</span></td>
                       <td>{typeof formatCLP === 'function' ? formatCLP(product?.precio) : `$${product?.precio}`}</td>
                       <td className="text-center">
-                        <button type="button" className="btn btn-sm btn-outline-warning me-1" onClick={() => openProduct(products.findIndex((item) => item.id === product.id))}>
+                        <button type="button" className="btn btn-sm btn-outline-warning me-1" onClick={() => openProduct(index)}>
                           <i className="bi bi-pencil" /> Editar
                         </button>
-                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => confirmRemoveProduct(products.findIndex((item) => item.id === product.id))}>
+                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => confirmRemoveProduct(index)}>
                           <i className="bi bi-trash" /> Eliminar
                         </button>
                       </td>
@@ -430,9 +414,9 @@ export default function Administracion() {
         <section>
           <div className="card bg-dark text-white border-secondary p-4">
             <h4>Perfil de Administrador</h4>
-            <p className="mt-3"><strong>Nombre:</strong> {user?.nombre}</p>
-            <p><strong>Correo Electrónico:</strong> {user?.email}</p>
-            <p><strong>Rol:</strong> {user?.rol}</p>
+            <p className="mt-3"><strong>Nombre:</strong> {currentUser?.nombre || 'No disponible'}</p>
+            <p><strong>Correo Electrónico:</strong> {currentUser?.email || 'No disponible'}</p>
+            <p><strong>Rol:</strong> {currentUser?.rol || 'No disponible'}</p>
           </div>
         </section>
       )}
@@ -585,7 +569,7 @@ export default function Administracion() {
                   </div>
                   <div className="mb-3">
                     <label htmlFor="userPassword" className="form-label">Contraseña {userModal?.index !== null ? '(dejar vacía para conservar la actual)' : ''}</label>
-                    <input name="password" defaultValue="" id="userPassword" type="password" className="form-control" minLength="4" autoComplete="new-password" placeholder={userModal?.index === null ? 'Contraseña para iniciar sesión' : 'Nueva contraseña (opcional)'} required={userModal?.index === null} />
+                    <input name="password" defaultValue="" id="userPassword" type="password" className="form-control" minLength="6" autoComplete="new-password" placeholder={userModal?.index === null ? 'Contraseña para iniciar sesión' : 'Nueva contraseña (opcional)'} required={userModal?.index === null} />
                     {userModal?.index === null && <small className="text-secondary">La contraseña se usará para iniciar sesión en Yakarta.</small>}
                   </div>
                   <div className="mb-3">
@@ -640,8 +624,7 @@ export default function Administracion() {
                 <button type="button" className="btn-close btn-close-white" onClick={() => setInvoiceModal(null)} aria-label="Cerrar" />
               </div>
               <div className="modal-body">
-                <p><strong>Cliente:</strong> {invoiceModal?.cliente}</p>
-                <p><strong>Estado:</strong> {invoiceModal?.estado || 'Sin estado'}</p>
+                <p><strong>Cliente:</strong> {invoiceModal?.cliente}</p>\n                <p><strong>Estado:</strong> {invoiceModal?.estado || 'Sin estado'}</p>
                 <p><strong>Fecha:</strong> {invoiceModal?.fecha}</p>
                 <hr />
                 <h6>Detalle de Productos:</h6>
