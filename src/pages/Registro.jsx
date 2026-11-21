@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiRequest } from '../lib/api';
+import { api } from '../lib/api';
 
 export default function Registro() {
   const navigate = useNavigate();
@@ -16,9 +16,14 @@ export default function Registro() {
     if (form.password !== form.confirmPassword) { setError('Las contraseñas no coinciden.'); return; }
     setLoading(true);
     try {
-      await apiRequest('register', { nombre: form.nombre.trim(), email: form.email.trim().toLowerCase(), password: form.password });
+      // No muestra un falso éxito si el backend está apagado o apunta a otra base sin tabla usuarios.
+      const health = await api.health();
+      if (!health?.ok || !health?.usersTableReady) {
+        throw new Error(health?.message || 'La base de datos no está preparada para registrar cuentas.');
+      }
+      await api.register({ nombre: form.nombre.trim(), email: form.email.trim().toLowerCase(), password: form.password });
       navigate('/login', { state: { registrationSuccess: true } });
-    } catch (err) { setError(err.message); }
+    } catch (err) { setError(err.message || 'No se pudo crear la cuenta.'); }
     finally { setLoading(false); }
   }
 
@@ -33,7 +38,7 @@ export default function Registro() {
             <div className="mb-3"><label htmlFor="email" className="form-label">Correo Electrónico</label><input name="email" value={form.email} onChange={update} type="email" id="email" className="form-control" required /></div>
             <div className="mb-3"><label htmlFor="password" className="form-label">Contraseña</label><input name="password" value={form.password} onChange={update} type="password" id="password" className="form-control" minLength={6} required /></div>
             <div className="mb-4"><label htmlFor="confirmPassword" className="form-label">Confirmar Contraseña</label><input name="confirmPassword" value={form.confirmPassword} onChange={update} type="password" id="confirmPassword" className="form-control" required /></div>
-            <button type="submit" className="btn btn-primary w-100 fw-bold">{loading ? 'Registrando...' : 'Registrarse'}</button>
+            <button type="submit" className="btn btn-primary w-100 fw-bold" disabled={loading}>{loading ? 'Verificando base de datos y registrando...' : 'Registrarse'}</button>
           </form>
           <p className="text-center mt-4 mb-0">¿Ya tienes una cuenta? <Link to="/login" className="text-info">Inicia Sesión aquí</Link></p>
         </div>

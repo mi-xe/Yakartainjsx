@@ -1,21 +1,38 @@
 // Cliente REST compartido por React. Las sesiones se autentican con cookie HttpOnly del backend.
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Si VITE_API_URL está vacío, conserva el mismo hostname usado para abrir React.
+// Así localhost y 127.0.0.1 no generan cookies/orígenes mezclados.
+const frontendHost = typeof window !== 'undefined' && window.location.hostname
+  ? window.location.hostname
+  : 'localhost';
+const frontendProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  ? 'https:'
+  : 'http:';
+export const API_URL = (import.meta.env.VITE_API_URL || `${frontendProtocol}//${frontendHost}:8080/api`).replace(/\/+$/, '');
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {}),
-    },
-  });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+    });
+  } catch (cause) {
+    const error = new Error(`No se pudo conectar con el backend (${API_URL}). Inicia YakartaBackend con Spring Boot y revisa la URL de VITE_API_URL.`);
+    error.cause = cause;
+    error.status = 0;
+    throw error;
+  }
   const text = await response.text();
   let result = null;
   try { result = text ? JSON.parse(text) : null; } catch { result = text; }
   if (!response.ok) {
-    const error = new Error(result?.message || result?.error || `Error HTTP ${response.status}`);
+    const serverMessage = result?.message || result?.error;
+    const error = new Error(serverMessage || `El backend respondió HTTP ${response.status}. Comprueba que estás ejecutando el backend Spring Boot de Yakarta.`);
     error.status = response.status;
     error.data = result;
     throw error;

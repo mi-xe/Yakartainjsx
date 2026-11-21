@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
-import { formatCLP, getProductPrice } from '../lib/storage';
+import { formatCLP, getProductPrice, resolveProductImage } from '../lib/storage';
 
 const previewImages = {
   'dead by daylight': ['/imgdbd/856303.webp', '/imgdbd/dead-by-daylight-2v8-mode-teaser-trailer-screenshots_uf26.jpg', '/imgdbd/dead-by-daylight---gameplay---6-1920x1080-0b71c2ea2600.png'],
@@ -96,14 +96,26 @@ export default function Tienda() {
 
   useEffect(() => {
     let active = true;
-    api.products().then((rows) => {
-      if (!active) return;
-      const mapped = rows.map((p) => ({ ...p, enOferta: Boolean(p.enOferta), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), precio: Number(p.precio) }));
-      setProducts(mapped);
-      setApiError('');
-    }).catch((error) => { if (active) { setProducts([]); setApiError(`No se pudo cargar el catálogo desde MySQL: ${error.message}`); } })
-      .finally(() => { if (active) setLoadingProducts(false); });
-    return () => { active = false; };
+    const loadProducts = () => {
+      setLoadingProducts(true);
+      api.products().then((rows) => {
+        if (!active) return;
+        const mapped = rows.map((p) => ({ ...p, enOferta: Boolean(p.enOferta), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), precio: Number(p.precio) }));
+        setProducts(mapped);
+        setApiError('');
+      }).catch((error) => {
+        if (active) setApiError(`No se pudo cargar el catálogo desde MySQL: ${error.message}`);
+      }).finally(() => { if (active) setLoadingProducts(false); });
+    };
+    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') loadProducts(); };
+    loadProducts();
+    window.addEventListener('focus', loadProducts);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', loadProducts);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -122,7 +134,7 @@ export default function Tienda() {
     const key = normalize(product.nombre);
     const exact = Object.entries(previewImages).find(([name]) => key.includes(normalize(name)) || normalize(name).includes(key));
     const generic = categoryImages[product.categoria] || ['/imgtienda/peak.jpg', '/imgtienda/cyberpunk.webp', '/imgtienda/rd9.jpg'];
-    return exact?.[1] || [product.imagen ? `/${product.imagen}` : '/imgtienda/peak.jpg', ...generic].filter((src, index, list) => list.indexOf(src) === index).slice(0, 3);
+    return exact?.[1] || [resolveProductImage(product.imagen), ...generic].filter((src, index, list) => list.indexOf(src) === index).slice(0, 3);
   }
 
   async function addToCart(product, goToCart = false) {
@@ -164,7 +176,7 @@ export default function Tienda() {
           const onSale = product.enOferta && price < product.precio;
           return <article className="store-game-card" key={product.id ?? product.nombre}>
             <button className="store-cover-button" type="button" onClick={() => { setSelectedProduct(product); setActiveShot(0); }} aria-label={`Ver detalles de ${product.nombre}`}>
-              <img className="store-cover" src={`/${product.imagen}`} alt={`Portada de ${product.nombre}`} loading="lazy" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = shots[0]; }} />
+              <img className="store-cover" src={resolveProductImage(product.imagen)} alt={`Portada de ${product.nombre}`} loading="lazy" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = shots.find((shot) => shot !== resolveProductImage(product.imagen)) || '/imgtienda/peak.jpg'; }} />
               {onSale && <span className="store-sale-badge">OFERTA</span>}
               <span className="store-quickview"><i className="bi bi-eye me-2" />Vista rápida</span>
             </button>
@@ -186,7 +198,7 @@ export default function Tienda() {
           <section className="store-detail-modal" role="dialog" aria-modal="true" aria-labelledby="store-detail-title">
             <button type="button" className="store-modal-close" onClick={closePreview} aria-label="Cerrar vista del juego">×</button>
             <div className="store-detail-layout">
-              <div className="store-detail-media"><div className="store-main-shot"><img src={shots[activeShot] || shots[0]} alt={`Captura ${activeShot + 1} de ${selectedProduct.nombre}`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/${selectedProduct.imagen}`; }} /></div><div className="store-shot-strip">{shots.map((shot, index) => <button key={shot} type="button" className={activeShot === index ? 'is-active' : ''} onClick={() => setActiveShot(index)} aria-label={`Mostrar captura ${index + 1}`}><img src={shot} alt="" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/${selectedProduct.imagen}`; }} /></button>)}</div></div>
+              <div className="store-detail-media"><div className="store-main-shot"><img src={shots[activeShot] || shots[0]} alt={`Captura ${activeShot + 1} de ${selectedProduct.nombre}`} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = resolveProductImage(selectedProduct.imagen); }} /></div><div className="store-shot-strip">{shots.map((shot, index) => <button key={shot} type="button" className={activeShot === index ? 'is-active' : ''} onClick={() => setActiveShot(index)} aria-label={`Mostrar captura ${index + 1}`}><img src={shot} alt="" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = resolveProductImage(selectedProduct.imagen); }} /></button>)}</div></div>
               <div className="store-detail-copy"><span className="store-eyebrow">{selectedProduct.categoria || 'VIDEOJUEGO'} / DETALLES</span><h2 id="store-detail-title">{selectedProduct.nombre}</h2><p>{descriptions[normalize(selectedProduct.nombre)] || `Explora ${selectedProduct.nombre}, un título de ${String(selectedProduct.categoria || 'videojuegos').toLowerCase()} que merece un lugar en tu colección. Revisa sus imágenes y añádelo al carrito cuando estés listo.`}</p><div className="store-detail-tags"><span><i className="bi bi-controller me-1" />PC / Colección Yakarta</span><span><i className="bi bi-images me-1" />{shots.length} imágenes</span></div><div className="store-detail-purchase"><div className="store-price">{onSale && <del>{formatCLP(selectedProduct.precio)}</del>}<strong>{formatCLP(price)}</strong></div><button type="button" className="store-buy-btn" onClick={() => addToCart(selectedProduct, true)}><i className="bi bi-bag-check me-2" />Comprar ahora</button><button type="button" className="store-add-wide" onClick={() => addToCart(selectedProduct)}><i className="bi bi-cart-plus me-2" />Agregar al carrito</button></div><p className="store-detail-note"><i className="bi bi-shield-check me-1" />Se añadirá a tu carrito de Yakarta.</p></div>
             </div>
           </section>

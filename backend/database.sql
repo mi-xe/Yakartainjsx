@@ -107,7 +107,9 @@ CREATE TABLE IF NOT EXISTS mensajes_contacto (
 
 -- Cuenta administradora inicial. Cambia su contraseña después del primer acceso.
 INSERT INTO usuarios (nombre, email, password, rol, saldo)
-VALUES ('Cristian Orlando', 'admin@tienda.com', '$2y$12$MTjn02tfiMtCV/ZSIdwzyujzWhL/dJp.cE3FqS7zyKJsWCoPGZABK', 'Administrador', 0)
+VALUES 
+('Cristian Orlando', 'admin@yakarta.com', 'trescuatro', 'Administrador', 0),
+('Mixin 123', 'mixin@yakarta.com', 'mixin2', 'Administrador', 0)
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), rol = 'Administrador';
 
 INSERT IGNORE INTO categorias (nombre) VALUES

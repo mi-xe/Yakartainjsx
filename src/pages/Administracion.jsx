@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { formatCLP } from '../lib/storage';
+import { formatCLP, resolveProductImage } from '../lib/storage';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -72,7 +72,7 @@ export default function Administracion() {
     }
   }
 
-  function submitProduct(event) {
+  async function submitProduct(event) {
     event.preventDefault();
     if (!productModal) return;
 
@@ -80,18 +80,27 @@ export default function Administracion() {
     const product = {
       nombre: (form.get('nombre') || '').toString().trim(),
       precio: Number(form.get('precio')) || 0,
-      precioOferta: Number(form.get('precioOferta')) || 0,
+      precioOferta: Number(form.get('precioOferta')) || null,
       enOferta: form.get('enOferta') === 'on',
       stock: Number(form.get('stock')) || 0,
       categoria: form.get('categoria') || '',
       imagen: (form.get('imagen') || '').toString().trim(),
     };
 
-    (async () => { try {
-      let saved; if (productModal.index === null) saved = await api.createProduct(product); else saved = await api.updateProduct(products[productModal.index].id, product);
-      const next = productModal.index === null ? [...products, saved] : products.map((p,i) => i === productModal.index ? saved : p); saveProducts(next); setApiError('');
-    } catch (e) { setApiError(`No se pudo guardar el producto: ${e.message}`); } })();
-    setProductModal(null);
+    try {
+      const saved = productModal.index === null
+        ? await api.createProduct(product)
+        : await api.updateProduct(products[productModal.index].id, product);
+      const normalized = { ...saved, precio: Number(saved.precio), precioOferta: saved.precioOferta == null ? null : Number(saved.precioOferta), enOferta: Boolean(saved.enOferta) };
+      const next = productModal.index === null
+        ? [...products, normalized]
+        : products.map((item, index) => index === productModal.index ? normalized : item);
+      saveProducts(next);
+      setApiError('');
+      setProductModal(null);
+    } catch (error) {
+      setApiError(`No se pudo guardar el producto: ${error.message}`);
+    }
   }
 
   // Confirmación Eliminación Producto
@@ -142,7 +151,7 @@ export default function Administracion() {
     }
   }
 
-  function submitUser(event) {
+  async function submitUser(event) {
     event.preventDefault();
     if (!userModal) return;
     const form = new FormData(event.currentTarget);
@@ -154,22 +163,23 @@ export default function Administracion() {
       rol: form.get('rol') || 'Cliente',
       password,
     };
-    if (userModal.index === null && !password) return;
-    (async () => {
-      try {
-        const saved = userModal.index === null
-          ? await api.createUser(user)
-          : await api.updateUser(users[userModal.index].id, user);
-        const next = userModal.index === null
-          ? [...users, saved]
-          : users.map((current, index) => index === userModal.index ? saved : current);
-        saveUsers(next);
-        setApiError('');
-      } catch (error) {
-        setApiError(`No se pudo guardar el usuario en MySQL: ${error.message}`);
-      }
-    })();
-    setUserModal(null);
+    if (userModal.index === null && !password) {
+      setApiError('Debes asignar una contraseña a la nueva cuenta.');
+      return;
+    }
+    try {
+      const saved = userModal.index === null
+        ? await api.createUser(user)
+        : await api.updateUser(users[userModal.index].id, user);
+      const next = userModal.index === null
+        ? [...users, saved]
+        : users.map((current, index) => index === userModal.index ? saved : current);
+      saveUsers(next);
+      setApiError('');
+      setUserModal(null);
+    } catch (error) {
+      setApiError(`No se pudo guardar el usuario en MySQL: ${error.message}`);
+    }
   }
 
   // Confirmación Eliminación Usuario
@@ -291,7 +301,7 @@ export default function Administracion() {
                     <tr key={product?.id ?? `prod-${index}`}>
                       <td>
                         <img
-                          src={product?.imagen ? (product.imagen.startsWith('/') ? product.imagen : `/${product.imagen}`) : ''}
+                          src={resolveProductImage(product?.imagen, '')}
                           style={{ width: '40px', height: '50px', objectFit: 'cover' }}
                           className="rounded"
                           alt={product?.nombre || 'Producto'}

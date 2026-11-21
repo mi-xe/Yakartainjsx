@@ -46,9 +46,6 @@ export default function IniciarSesion() {
           <div className="d-flex align-items-center my-3"><hr className="flex-grow-1 border-secondary m-0" /><span className="px-2 text-secondary small">O continúa con</span><hr className="flex-grow-1 border-secondary m-0" /></div>
           <div className="d-grid gap-2 mb-3">
             <button type="button" className="btn btn-outline-light border-secondary" onClick={() => socialLogin('google')}><i className="bi bi-google me-2" />Continuar con Google</button>
-            <button type="button" className="btn btn-outline-light border-secondary" onClick={() => socialLogin('facebook')}><i className="bi bi-facebook me-2" />Continuar con Facebook</button>
-            <button type="button" className="btn btn-outline-light border-secondary" onClick={() => socialLogin('x')}><strong className="me-2">𝕏</strong>Continuar con X</button>
-            <button type="button" className="btn btn-outline-secondary" onClick={() => socialLogin('playstation')}><i className="bi bi-playstation me-2" />Continuar con PlayStation</button>
           </div>
           {socialNotice && <div className="alert alert-warning small py-2" role="alert">{socialNotice}</div>}
           <div className="d-flex align-items-center my-3"><hr className="flex-grow-1 border-secondary m-0" /><span className="px-2 text-secondary small">¿No tienes una cuenta?</span><hr className="flex-grow-1 border-secondary m-0" /></div>

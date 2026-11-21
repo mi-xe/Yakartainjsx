@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatCLP } from '../lib/storage';
+import { formatCLP, resolveProductImage } from '../lib/storage';
 import { api } from '../lib/api';
 
 export default function Carrito() {
@@ -50,7 +50,7 @@ export default function Carrito() {
               return (
                 <li className="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center" key={product.id}>
                   <div className="d-flex align-items-center">
-                    <img src={`/${product.imagen}`} style={{ width: '50px', height: '60px', objectFit: 'cover' }} className="me-3 rounded" alt={product.nombre} />
+                    <img src={resolveProductImage(product.imagen)} style={{ width: '50px', height: '60px', objectFit: 'cover' }} className="me-3 rounded" alt={product.nombre} />
                     <div><h6 className="mb-0">{product.nombre}</h6><small className="text-muted">Cantidad: {product.cantidad} x {formatCLP(product.precio)}</small></div>
                   </div>
                   <div><span className="me-3 fw-bold">{formatCLP(subtotal)}</span><button type="button" onClick={() => removeItem(product.productoId)} className="btn btn-danger btn-sm" aria-label={`Quitar ${product.nombre}`}>X</button></div>
