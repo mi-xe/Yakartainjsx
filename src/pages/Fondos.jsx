@@ -37,7 +37,7 @@ export default function Fondos() {
         {error && <div className="alert alert-danger" role="alert">{error}</div>}
         <div className="row g-3">{AMOUNTS.map((amount) => <div className="col-6 col-md-3" key={amount}><button type="button" className="btn btn-outline-info w-100 h-100 py-3" onClick={() => addFunds(amount)} disabled={loadingAmount !== null}><i className="bi bi-plus-circle me-2" />{loadingAmount === amount ? 'Procesando...' : formatCLP(amount)}</button></div>)}</div>
         <p className="small text-secondary mt-3 mb-0">Modo demostración: el saldo se almacena en MySQL en tu cuenta. No se realiza un cobro bancario real.</p>
-        <div className="text-center mt-4"><Link to="/tienda" className="btn btn-primary">Volver a la tienda</Link></div>
+        <div className="d-flex flex-wrap justify-content-center gap-2 mt-4"><Link to="/resumen" className="btn btn-success">Volver al resumen de compra</Link><Link to="/tienda" className="btn btn-outline-light">Volver a la tienda</Link></div>
       </div>
     </main>
   );

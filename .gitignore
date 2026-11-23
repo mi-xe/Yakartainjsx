@@ -28,3 +28,8 @@ dist-ssr
 .env.*.local
 # Java build output
 backend/target/
+
+# Local frontend environment values (never put provider secrets in VITE_ variables)
+.env
+.env.*
+!.env.example

@@ -182,3 +182,11 @@
     border-right-color: var(--border);
   }
 }
+
+
+/* Receipt thumbnails and the optional Google-account email action. */
+.receipt-product-thumbnail{width:58px;height:58px;flex:0 0 58px;object-fit:contain;background:#f4f4f4;border:1px solid #555;border-radius:7px;padding:3px}
+.receipt-product-placeholder{display:flex;align-items:center;justify-content:center;color:#777;font-size:1.4rem}
+.receipt-email-panel{background:rgba(13,202,240,.06);border:1px solid rgba(13,202,240,.28)}
+
+.receipt-modal-brand > img{display:block!important;width:72px!important;height:72px!important;max-width:72px!important;max-height:72px!important;object-fit:contain;margin:0 auto;flex:none}

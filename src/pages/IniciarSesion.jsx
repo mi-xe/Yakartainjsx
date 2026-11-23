@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_URL } from '../lib/api';
 
 export default function IniciarSesion() {
   const navigate = useNavigate();
@@ -16,8 +17,13 @@ export default function IniciarSesion() {
   const [socialNotice, setSocialNotice] = useState('');
 
   function socialLogin(provider) {
+    if (provider === 'google') {
+      setSocialNotice('Conectando con Google…');
+      window.location.assign(`${BACKEND_URL}/oauth2/authorization/google`);
+      return;
+    }
     const providerName = provider === 'x' ? 'X' : provider.charAt(0).toUpperCase() + provider.slice(1);
-    setSocialNotice(`${providerName} todavía no está configurado en el backend. Para activarlo se necesitan las credenciales OAuth oficiales del proveedor. Puedes ingresar con tu correo y contraseña de Yakarta.`);
+    setSocialNotice(`${providerName} todavía no está configurado en el backend. Puedes ingresar con tu correo y contraseña de Yakarta.`);
   }
 
   async function submit(event) {

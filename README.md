@@ -1,44 +1,110 @@
-# Yakarta Frontend (React + Vite)
+# Yakarta Frontend — proyecto independiente
 
-Este es el proyecto **frontend** de Yakarta. Contiene únicamente React/Vite, sus componentes, páginas, estilos, imágenes y pruebas. No incluye código Java, Spring Boot ni scripts SQL.
+Este directorio contiene **únicamente el frontend React + Vite** de Yakarta. El backend Spring Boot se entrega como un segundo proyecto separado. Ambos se ejecutan en terminales independientes y se comunican a través de la API REST; el frontend no contiene código Java, PHP ni scripts de base de datos.
 
 ## Requisitos
+
 - Node.js 20 o superior.
 - npm.
-- El backend REST de Yakarta ejecutándose por separado en `http://localhost:8080`.
+- El backend independiente YakartaBackend ejecutándose y accesible por HTTP.
 
-## Configurar la URL de la API
+## Configurar la URL del backend
 
-Cuando la variable queda vacía, el frontend usa automáticamente el mismo hostname con que abriste React y el puerto `8080` (por ejemplo `localhost:8080` o `127.0.0.1:8080`). Si tu backend está en otra máquina, escribe su dirección completa, por ejemplo `VITE_API_URL=http://192.168.1.10:8080/api`. Después de modificar `.env`, reinicia Vite.
+Crea o edita `.env` en la raíz de este proyecto:
 
-## Ejecutar solo el frontend
+```env
+VITE_API_URL=http://localhost:8080/api
+```
 
-Desde esta carpeta (donde está `package.json`):
+Si frontend y backend se ejecutan en el mismo equipo y utilizas `localhost` o `127.0.0.1` para abrir React, también puedes dejar `VITE_API_URL=` vacío. El cliente React usará automáticamente el mismo hostname con el puerto `8080`. Si el backend está en otra máquina, escribe su URL completa, por ejemplo `http://192.168.1.10:8080/api`.
 
-```powershell
+Después de modificar `.env`, reinicia Vite para que tome el nuevo valor.
+
+## Ejecutar únicamente el frontend
+
+Abre una terminal en esta carpeta (la que contiene `package.json`) y ejecuta:
+
+```bash
 npm install
 npm run dev
 ```
 
-Vite mostrará una URL, normalmente `http://localhost:5173`.
+Vite mostrará la dirección local, normalmente `http://localhost:5173`.
 
-## Comunicación con el backend
+Para comprobar la compilación de producción y las pruebas:
 
-React no se conecta directamente a MySQL. React realiza solicitudes HTTP a la API REST de Spring Boot (`VITE_API_URL`); Spring Boot es el único que se conecta a MySQL.
+```bash
+npm run build
+npm test
+```
 
-Para que el catálogo, las cuentas, el carrito, el saldo, las direcciones y las compras funcionen, el backend debe estar iniciado por separado. Consulta el README del proyecto backend para configurarlo.
+## Comunicación entre proyectos
 
-## Comprobación
+React consume la API REST del backend a través de `src/lib/api.js`. El navegador no se conecta directamente a MySQL. El backend independiente se encarga de la base de datos, autenticación y persistencia.
 
-La API debe responder en `http://localhost:8080/api/health` (o el mismo hostname que uses para React). Ahora este endpoint confirma que MySQL está conectado, que existe la tabla `usuarios`, qué base se está utilizando y cuántas cuentas hay guardadas. El formulario de registro comprueba esa respuesta antes de enviar los datos. Desde React, el cliente HTTP está en `src/lib/api.js` y la sesión se gestiona en `src/context/AuthContext.jsx` mediante cookie HttpOnly.
+La tienda, el carrito, las cuentas, las categorías, las compras y el panel de administración necesitan que el backend esté iniciado. Para conocer los pasos de instalación de MySQL y el comando de inicio de Spring Boot, consulta el README del proyecto **YakartaBackend**.
 
-## Footer
+## Administrar juegos y plataformas
 
-El pie de página incluye el logo de Yakarta, accesos a Tienda, Novedades y Nosotros, y los datos de contacto registrados en la página Contacto.
+En **Administración → Juegos y productos**, al crear o editar un juego puedes definir una descripción personalizada, subir su portada y agregar hasta 12 imágenes de previsualización. Las imágenes se pueden seleccionar desde tu computador o indicar mediante URL/ruta pública. También puedes seleccionar varias plataformas, limitadas a **PC, PlayStation 3, PlayStation 4, PlayStation 5, Xbox Series S/X, Nintendo Switch y Nintendo Switch 2**.
+
+Las etiquetas aparecen en las tarjetas de la tienda y en la ficha de detalle. Los iconos representan PC, consolas o ambas plataformas. Los productos antiguos conservan información de respaldo para sus descripciones y galerías cuando todavía no tienen datos personalizados guardados.
+
+Las imágenes seleccionadas desde el panel se envían al endpoint `POST /api/archivos/imagenes` del backend. La respuesta de ese endpoint devuelve una ruta como `/uploads/productos/<archivo>.webp`; esa ruta se agrega al arreglo `imagenesPreview` y se guarda al enviar `POST` o `PUT /api/productos`. Los archivos se almacenan físicamente en `uploads/productos/` dentro del backend, mientras MySQL guarda la ruta en `productos.imagenes_preview`. Conserva esa carpeta junto con la base de datos.
+
+**No pegues una ruta local de tu PC** como `C:\Users\...`: el navegador de la tienda ni el servidor pueden leer directamente el disco del administrador. Para ese caso usa **Subir desde el equipo**. En el campo de texto puedes pegar una URL pública (`https://...`) o una ruta ya servida por el backend (`/uploads/productos/...`) o por Vite (`/imgtienda/...`).
+
+## Footer y boletas
+
+El pie de página incluye el logo de Yakarta, accesos de navegación y datos de contacto. En **Mis Compras** cada pedido dispone de las opciones para descargar e imprimir la boleta.
+
+## Importante: separación de los proyectos
+
+Este ZIP no incluye backend, MySQL, Java, PHP, `node_modules` ni una copia del proyecto Spring Boot. Ejecuta el frontend desde esta carpeta y el backend desde su propia carpeta. No muevas los archivos de uno dentro del otro.
+
+## Ajustes del formulario de productos
+
+El formulario de crear/editar juegos mantiene ahora la cabecera y los botones de acción visibles mientras se desplaza el contenido del formulario. El botón muestra **Crear juego** al registrar y **Guardar cambios** al editar. La galería ofrece acciones para agregar capturas tanto antes como después de la lista, con un máximo de 12, y bloquea temporalmente cambios de filas mientras una imagen está subiendo.
+
+La descripción es un campo controlado por React y se envía explícitamente en el JSON de `POST /api/productos` o `PUT /api/productos/{id}`. Tras guardar, el frontend vuelve a consultar el producto mediante `GET /api/productos/{id}` para comprobar que el valor quedó disponible desde el backend. La tienda utiliza `producto.descripcion` al cargar su catálogo.
+
+Asegúrate de que `VITE_API_URL` apunte al backend Spring Boot actualizado, normalmente `http://localhost:8080/api`.
+
+### Guardado y verificación de capturas
+
+El formulario espera que todas las cargas terminen antes de permitir guardar. Después de guardar el producto, consulta `GET /api/productos/{id}` para comparar la galería persistida con las URLs enviadas. Si el GET falla después de que el backend haya devuelto un ID, el formulario conserva el ID y los cambios para reintentar una actualización sin crear un producto duplicado.
 
 
-## Cuentas, catálogo y boletas
+## Inventario visible en tienda y carrito
 
-El inicio de sesión, el registro y el catálogo consultan la API REST indicada por `VITE_API_URL`. El panel de administración guarda productos en esa misma API; la tienda obtiene el catálogo actualizado desde `/productos`. Las rutas de imágenes locales deben existir dentro de `public/` (por ejemplo `public/imgtienda/juego.jpg`); también se aceptan URLs HTTPS.
+- La tienda utiliza el campo `stock` que devuelve `GET /api/productos`.
+- Los productos con stock cero se muestran atenuados con la etiqueta **FUERA DE STOCK** y no permiten agregarse al carrito.
+- La ficha de previsualización muestra las unidades disponibles.
+- El carrito permite ajustar cantidades sin superar el stock informado por el backend; si el inventario cambia mientras el producto está en el carrito, bloquea el checkout y permite corregir o quitar la línea.
+- El panel de administración vuelve a consultar productos cuando recupera el foco para mostrar los cambios de inventario posteriores a una compra.
 
-En **Mis Compras**, cada pedido dispone de las opciones **Descargar boleta** (PDF) e **Imprimir boleta**. El frontend genera la representación de la boleta a partir de los datos del pedido devueltos por el backend.
+La compra descuenta stock en el backend al confirmar el pedido; el navegador no modifica el inventario por su cuenta.
+
+
+## Inicio de sesión con Google
+
+El botón **Continuar con Google** redirige al backend independiente en `http://localhost:8080/oauth2/authorization/google`. El Client Secret no se configura en React: solo debe existir en las variables de entorno de Spring Boot.
+
+Configura `VITE_API_URL=http://localhost:8080/api` si necesitas fijar la dirección del backend. El callback de autenticación vuelve a la ruta `/oauth/callback` del frontend.
+
+## Pago con cuenta Google
+
+El checkout utiliza la misma sesión de servidor que genera Google OAuth. El cliente REST envía la cookie HttpOnly con `credentials: include`. Abre el frontend y el backend siempre con el mismo hostname (`localhost` en ambos, no mezcles `localhost` con `127.0.0.1`).
+
+Las compras de cuentas Cliente se pagan con el saldo Yakarta. Las cuentas nuevas creadas con Google parten con saldo cero; utiliza la sección Fondos antes de confirmar un pedido. La pantalla Resumen muestra el saldo y el total, ofrece el acceso a Fondos y desactiva el botón de pago mientras el saldo sea insuficiente.
+
+## Boletas con logo y miniaturas
+
+La vista de detalle de compra, la impresión y el PDF muestran el logo de Yakarta centrado al principio y miniaturas de los juegos. El API de pedidos entrega `productos[].imagen`, que corresponde a la imagen guardada como instantánea al confirmar el pedido. Para pedidos antiguos, el backend recupera la imagen actual del producto cuando la relación sigue disponible.
+
+El botón **Enviar boleta por correo** se muestra solo cuando `GET /api/auth/me` indica `authProvider: "GOOGLE"`. El PDF se genera en el navegador y se envía como adjunto al endpoint `POST /api/pedidos/{id}/boleta/email`; el backend valida de nuevo que la sesión actual sea Google y que el pedido pertenezca al usuario. El destinatario nunca se elige en el frontend: se utiliza el correo Google verificado asociado a la cuenta Yakarta.
+
+
+### Envío de boletas por correo
+
+La interfaz solo muestra una confirmación informativa cuando el backend devuelve `acceptedBySmtp: true`. El mensaje identifica el destinatario, el remitente y el `Message-ID`. La aceptación SMTP no garantiza que el proveedor coloque el mensaje en Recibidos: revisar Spam, Promociones, Todos los correos y la carpeta Enviados de la cuenta emisora.

@@ -8,6 +8,7 @@ const frontendProtocol = typeof window !== 'undefined' && window.location.protoc
   ? 'https:'
   : 'http:';
 export const API_URL = (import.meta.env.VITE_API_URL || `${frontendProtocol}//${frontendHost}:8080/api`).replace(/\/+$/, '');
+export const BACKEND_URL = API_URL.replace(/\/api$/i, '');
 
 async function request(path, options = {}) {
   let response;
@@ -42,12 +43,69 @@ async function request(path, options = {}) {
 
 const json = (method, data) => ({ method, body: JSON.stringify(data ?? {}) });
 
+async function uploadForm(path, formData) {
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+  } catch (cause) {
+    const error = new Error(`No se pudo conectar con el backend (${API_URL}).`);
+    error.cause = cause;
+    error.status = 0;
+    throw error;
+  }
+  const text = await response.text();
+  let result = null;
+  try { result = text ? JSON.parse(text) : null; } catch { result = text; }
+  if (!response.ok) {
+    const error = new Error(result?.message || `El backend respondió HTTP ${response.status}.`);
+    error.status = response.status;
+    error.data = result;
+    throw error;
+  }
+  return result;
+}
+
+async function uploadFile(path, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+  } catch (cause) {
+    const error = new Error(`No se pudo conectar con el backend (${API_URL}).`);
+    error.cause = cause;
+    error.status = 0;
+    throw error;
+  }
+  const text = await response.text();
+  let result = null;
+  try { result = text ? JSON.parse(text) : null; } catch { result = text; }
+  if (!response.ok) {
+    const error = new Error(result?.message || `El backend respondió HTTP ${response.status}.`);
+    error.status = response.status;
+    error.data = result;
+    throw error;
+  }
+  return result;
+}
+
 export const api = {
   health: () => request('/health'),
   products: () => request('/productos'),
   product: (id) => request(`/productos/${id}`),
   createProduct: (product) => request('/productos', json('POST', product)),
   updateProduct: (id, product) => request(`/productos/${id}`, json('PUT', product)),
+  uploadProductImage: (file) => uploadFile('/archivos/imagenes', file),
   deleteProduct: (id) => request(`/productos/${id}`, { method: 'DELETE' }),
 
   categories: () => request('/categorias'),
@@ -79,6 +137,11 @@ export const api = {
   orders: () => request('/pedidos'),
   order: (id) => request(`/pedidos/${id}`),
   createOrder: () => request('/pedidos', json('POST', {})),
+  sendReceiptEmail: (id, pdfBlob) => {
+    const formData = new FormData();
+    formData.append('receipt', pdfBlob, `boleta-yakarta-${id}.pdf`);
+    return uploadForm(`/pedidos/${id}/boleta/email`, formData);
+  },
   deleteOrder: (id) => request(`/pedidos/${id}`, { method: 'DELETE' }),
 };
 

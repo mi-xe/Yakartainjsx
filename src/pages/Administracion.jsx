@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { formatCLP, resolveProductImage } from '../lib/storage';
+import { formatCLP, normalizeProductImagePath, resolveProductImage } from '../lib/storage';
 import { useAuth } from '../context/AuthContext';
+import { findLegacyDescription, findLegacyPreviewImages } from '../lib/catalogMetadata';
+
+const PLATFORM_OPTIONS = [
+  'PC',
+  'PlayStation 3',
+  'PlayStation 4',
+  'PlayStation 5',
+  'Xbox Series S/X',
+  'Nintendo Switch',
+  'Nintendo Switch 2',
+];
 
 
 export default function Administracion() {
@@ -23,7 +34,7 @@ export default function Administracion() {
           api.products(), api.categories(), api.users(), api.orders()
         ]);
         if (!alive) return;
-        setProducts(productRows.map(p => ({ ...p, precio: Number(p.precio), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), enOferta: Boolean(p.enOferta) })));
+        setProducts(productRows.map(p => ({ ...p, precio: Number(p.precio), precioOferta: p.precioOferta == null ? null : Number(p.precioOferta), enOferta: Boolean(p.enOferta), stock: Math.max(0, Number(p.stock ?? 0)), descripcion: p.descripcion || '', imagenesPreview: Array.isArray(p.imagenesPreview) ? p.imagenesPreview : [], plataformas: Array.isArray(p.plataformas) && p.plataformas.length ? p.plataformas : ['PC'] })));
         setCategoryRows(categoryData);
         setCategories(categoryData.map(c => c.nombre));
         setUsers(userRows);
@@ -39,12 +50,42 @@ export default function Administracion() {
         if (alive) setLoadingData(false);
       }
     })();
-    return () => { alive = false; };
+
+    // Actualiza el inventario cuando el administrador vuelve a esta pestaña,
+    // por ejemplo después de que un cliente completa una compra en otra ventana.
+    const refreshProducts = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const rows = await api.products();
+        if (!alive) return;
+        setProducts(rows.map(p => ({
+          ...p,
+          precio: Number(p.precio),
+          precioOferta: p.precioOferta == null ? null : Number(p.precioOferta),
+          enOferta: Boolean(p.enOferta),
+          stock: Math.max(0, Number(p.stock ?? 0)),
+          descripcion: p.descripcion || '',
+          imagenesPreview: Array.isArray(p.imagenesPreview) ? p.imagenesPreview : [],
+          plataformas: Array.isArray(p.plataformas) && p.plataformas.length ? p.plataformas : ['PC'],
+        })));
+      } catch (error) {
+        if (alive) setApiError(`No se pudo actualizar el inventario: ${error.message}`);
+      }
+    };
+    window.addEventListener('focus', refreshProducts);
+    document.addEventListener('visibilitychange', refreshProducts);
+    return () => {
+      alive = false;
+      window.removeEventListener('focus', refreshProducts);
+      document.removeEventListener('visibilitychange', refreshProducts);
+    };
   }, []);
 
   // Control de Navegación: 'dashboard' | 'products' | 'categories' | 'users' | 'orders' | 'profile'
   const [tab, setTab] = useState('dashboard');
   const [filterCritical, setFilterCritical] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(0);
+  const [savingProduct, setSavingProduct] = useState(false);
 
   // Modales
   const [productModal, setProductModal] = useState(null);
@@ -66,40 +107,275 @@ export default function Administracion() {
   // Gestor Productos
   function openProduct(index = null) {
     if (index === null) {
-      setProductModal({ index: null, nombre: '', precio: '', precioOferta: '', enOferta: false, stock: 10, categoria: categories[0] || '', imagen: '' });
+      setProductModal({ index: null, nombre: '', precio: '', precioOferta: '', enOferta: false, stock: 10, categoria: categories[0] || '', imagen: '', descripcion: '', imagenesPreview: [''], plataformas: ['PC'] });
     } else {
-      setProductModal({ index, ...products[index] });
+      setProductModal({
+        index,
+        ...products[index],
+        descripcion: products[index].descripcion || findLegacyDescription(products[index].nombre),
+        imagenesPreview: Array.isArray(products[index].imagenesPreview) && products[index].imagenesPreview.length ? products[index].imagenesPreview : findLegacyPreviewImages(products[index].nombre),
+        plataformas: Array.isArray(products[index].plataformas) && products[index].plataformas.length ? products[index].plataformas : ['PC'],
+      });
     }
+  }
+
+
+  function updateProductDraft(field, value) {
+    setProductModal(current => current ? { ...current, [field]: value } : current);
+  }
+
+  async function uploadImageFile(file, onUploaded) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setApiError('El archivo seleccionado no es una imagen.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setApiError('Cada imagen puede pesar como máximo 8 MB.');
+      return;
+    }
+    setUploadingImages(current => current + 1);
+    try {
+      const result = await api.uploadProductImage(file);
+      if (!result?.url) throw new Error('El backend no devolvió la dirección de la imagen.');
+      onUploaded(result.url);
+      setApiError('');
+    } catch (error) {
+      setApiError(`No se pudo subir la imagen: ${error.message}`);
+    } finally {
+      setUploadingImages(current => Math.max(0, current - 1));
+    }
+  }
+
+  function handleCoverUpload(event) {
+    const file = event.target.files?.[0];
+    uploadImageFile(file, url => updateProductDraft('imagen', url));
+    event.target.value = '';
+  }
+
+  function handlePreviewUpload(index, event) {
+    const file = event.target.files?.[0];
+    uploadImageFile(file, url => updatePreviewImage(index, url));
+    event.target.value = '';
+  }
+
+  // Permite subir varias capturas en una sola selección. Los archivos se copian
+  // al servidor; al producto se le guardan sus URL, no una ruta local de Windows.
+  async function handlePreviewFilesUpload(event) {
+    const selectedFiles = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!selectedFiles.length || !productModal) return;
+
+    const currentImages = productModal.imagenesPreview || [];
+    const occupiedSlots = currentImages.filter(value => String(value || '').trim()).length;
+    const capacity = Math.max(0, 12 - occupiedSlots);
+    const errors = [];
+    const validFiles = [];
+
+    selectedFiles.forEach(file => {
+      if (!file.type.startsWith('image/')) errors.push(`${file.name}: no es una imagen.`);
+      else if (file.size > 8 * 1024 * 1024) errors.push(`${file.name}: supera el límite de 8 MB.`);
+      else validFiles.push(file);
+    });
+
+    if (validFiles.length > capacity) {
+      errors.push(`Solo se pueden agregar ${capacity} captura(s) más; el límite es 12.`);
+    }
+    const filesToUpload = validFiles.slice(0, capacity);
+    if (!filesToUpload.length) {
+      if (errors.length) setApiError(errors.join(' '));
+      return;
+    }
+
+    setUploadingImages(count => count + filesToUpload.length);
+    try {
+      const results = await Promise.allSettled(filesToUpload.map(file => api.uploadProductImage(file)));
+      const uploadedUrls = results
+        .filter(result => result.status === 'fulfilled' && result.value?.url)
+        .map(result => result.value.url);
+      const failedUploads = results.filter(result => result.status === 'rejected' || !result.value?.url).length;
+
+      if (uploadedUrls.length) {
+        setProductModal(current => {
+          if (!current) return current;
+          const images = [...(current.imagenesPreview || [])];
+          uploadedUrls.forEach(url => {
+            const emptyIndex = images.findIndex(value => !String(value || '').trim());
+            if (emptyIndex >= 0) images[emptyIndex] = url;
+            else if (images.length < 12) images.push(url);
+          });
+          return { ...current, imagenesPreview: images };
+        });
+      }
+
+      if (errors.length || failedUploads) {
+        const failureText = failedUploads ? `${failedUploads} imagen(es) no pudieron subirse. Revisa que el backend esté iniciado y que tu sesión tenga permisos de administrador.` : '';
+        setApiError([errors.join(' '), failureText].filter(Boolean).join(' '));
+      } else {
+        setApiError('');
+      }
+    } finally {
+      setUploadingImages(count => Math.max(0, count - filesToUpload.length));
+    }
+  }
+
+  function updatePreviewImage(index, value) {
+    setProductModal(current => {
+      if (!current) return current;
+      const imagenesPreview = [...(current.imagenesPreview || [])];
+      imagenesPreview[index] = value;
+      return { ...current, imagenesPreview };
+    });
+  }
+
+  function addPreviewImage() {
+    if ((productModal?.imagenesPreview || []).length >= 12) {
+      setApiError('Puedes agregar un máximo de 12 imágenes de previsualización.');
+      return;
+    }
+    setProductModal(current => current ? { ...current, imagenesPreview: [...(current.imagenesPreview || []), ''] } : current);
+  }
+
+  function removePreviewImage(index) {
+    setProductModal(current => current ? { ...current, imagenesPreview: (current.imagenesPreview || []).filter((_, imageIndex) => imageIndex !== index) } : current);
+  }
+
+  function togglePlatform(platform, checked) {
+    setProductModal(current => {
+      if (!current) return current;
+      const platforms = new Set(current.plataformas || []);
+      if (checked) platforms.add(platform);
+      else platforms.delete(platform);
+      return { ...current, plataformas: PLATFORM_OPTIONS.filter(option => platforms.has(option)) };
+    });
   }
 
   async function submitProduct(event) {
     event.preventDefault();
-    if (!productModal) return;
+    if (!productModal || savingProduct || uploadingImages > 0) return;
 
     const form = new FormData(event.currentTarget);
+    let coverImage = '';
+    let previewImages = [];
+    try {
+      coverImage = normalizeProductImagePath(productModal.imagen || '');
+      previewImages = [...new Set((productModal.imagenesPreview || [])
+        .map(value => normalizeProductImagePath(value))
+        .filter(Boolean))];
+    } catch (error) {
+      setApiError(error.message);
+      return;
+    }
+
+    if (!coverImage) {
+      setApiError('Selecciona una portada o sube una imagen principal antes de guardar.');
+      return;
+    }
+
     const product = {
       nombre: (form.get('nombre') || '').toString().trim(),
       precio: Number(form.get('precio')) || 0,
       precioOferta: Number(form.get('precioOferta')) || null,
       enOferta: form.get('enOferta') === 'on',
       stock: Number(form.get('stock')) || 0,
-      categoria: form.get('categoria') || '',
-      imagen: (form.get('imagen') || '').toString().trim(),
+      categoria: (form.get('categoria') || '').toString().trim(),
+      imagen: coverImage,
+      descripcion: (productModal.descripcion || '').toString().trim(),
+      imagenesPreview: previewImages,
+      plataformas: [...new Set((productModal.plataformas || [])
+        .filter(value => PLATFORM_OPTIONS.includes(value)))],
     };
 
+    if (!product.plataformas.length) {
+      setApiError('Selecciona al menos una plataforma para el juego.');
+      return;
+    }
+
+    setSavingProduct(true);
+    let savedProduct = null;
     try {
-      const saved = productModal.index === null
+      if (productModal.index !== null && !(productModal.id ?? products[productModal.index]?.id)) {
+        throw new Error('No se encontró el identificador del producto que intentas editar. Cierra y vuelve a abrir el formulario desde la lista de productos.');
+      }
+      savedProduct = productModal.index === null
         ? await api.createProduct(product)
-        : await api.updateProduct(products[productModal.index].id, product);
-      const normalized = { ...saved, precio: Number(saved.precio), precioOferta: saved.precioOferta == null ? null : Number(saved.precioOferta), enOferta: Boolean(saved.enOferta) };
-      const next = productModal.index === null
-        ? [...products, normalized]
-        : products.map((item, index) => index === productModal.index ? normalized : item);
+        : await api.updateProduct(productModal.id ?? products[productModal.index].id, product);
+
+      if (!savedProduct?.id) throw new Error('El backend no devolvió el identificador del producto guardado.');
+
+      // La respuesta de escritura no basta: leemos el registro desde un GET
+      // independiente para confirmar que SQL contiene portada y galería.
+      let persisted;
+      try {
+        persisted = await api.product(savedProduct.id);
+      } catch (error) {
+        // El POST/PUT ya devolvió un ID: refleja el producto en el estado local
+        // y conserva ese ID en el modal. Así, una verificación GET fallida no
+        // provoca que el siguiente intento cree un duplicado.
+        const existingIndex = products.findIndex(item => Number(item.id) === Number(savedProduct.id));
+        const optimistic = {
+          ...product,
+          id: savedProduct.id,
+          precio: Number(product.precio),
+          precioOferta: product.precioOferta == null ? null : Number(product.precioOferta),
+          enOferta: Boolean(product.enOferta),
+        };
+        const optimisticProducts = existingIndex >= 0
+          ? products.map(item => Number(item.id) === Number(savedProduct.id) ? optimistic : item)
+          : [...products, optimistic];
+        const savedIndex = optimisticProducts.findIndex(item => Number(item.id) === Number(savedProduct.id));
+        saveProducts(optimisticProducts);
+        setProductModal({ ...productModal, ...optimistic, index: savedIndex });
+        throw new Error(`El backend aceptó el guardado, pero no se pudo verificar mediante GET /productos/${savedProduct.id}: ${error.message}. El formulario conserva el ID y las capturas para que puedas reintentar sin crear un duplicado.`);
+      }
+
+      const persistedImages = Array.isArray(persisted?.imagenesPreview)
+        ? persisted.imagenesPreview.map(value => normalizeProductImagePath(value)).filter(Boolean)
+        : [];
+      const sameImages = persistedImages.length === product.imagenesPreview.length
+        && persistedImages.every((value, index) => value === product.imagenesPreview[index]);
+      const sameCover = normalizeProductImagePath(persisted?.imagen || '') === product.imagen;
+      const sameDescription = String(persisted?.descripcion ?? '').trim() === product.descripcion;
+      const persistedPlatforms = Array.isArray(persisted?.plataformas) ? persisted.plataformas : [];
+      const samePlatforms = persistedPlatforms.length === product.plataformas.length
+        && persistedPlatforms.every((value, index) => value === product.plataformas[index]);
+
+      const normalized = {
+        ...persisted,
+        precio: Number(persisted.precio),
+        precioOferta: persisted.precioOferta == null ? null : Number(persisted.precioOferta),
+        enOferta: Boolean(persisted.enOferta),
+        descripcion: String(persisted.descripcion ?? ''),
+        imagenesPreview: persistedImages,
+        plataformas: Array.isArray(persisted.plataformas) && persisted.plataformas.length ? persisted.plataformas : product.plataformas,
+      };
+
+      const existingIndex = products.findIndex(item => Number(item.id) === Number(savedProduct.id));
+      const next = existingIndex >= 0
+        ? products.map(item => Number(item.id) === Number(savedProduct.id) ? normalized : item)
+        : [...products, normalized];
+      const savedIndex = next.findIndex(item => Number(item.id) === Number(savedProduct.id));
+
+      if (!sameImages || !sameCover || !sameDescription || !samePlatforms) {
+        saveProducts(next);
+        setProductModal({ ...productModal, ...product, id: savedProduct.id, index: savedIndex });
+        const missing = [
+          !sameCover ? 'portada' : '',
+          !sameImages ? 'galería de capturas' : '',
+          !sameDescription ? 'descripción' : '',
+          !samePlatforms ? 'plataformas' : '',
+        ].filter(Boolean).join(', ');
+        setApiError(`El producto existe, pero el backend no devolvió los datos recién enviados (${missing}). Revisa que estés ejecutando el backend actualizado y aplica database/migrate_product_metadata.sql en la misma base de datos configurada en DB_URL. El formulario quedó abierto para que puedas corregirlo sin crear un duplicado.`);
+        return;
+      }
+
       saveProducts(next);
       setApiError('');
       setProductModal(null);
     } catch (error) {
       setApiError(`No se pudo guardar el producto: ${error.message}`);
+    } finally {
+      setSavingProduct(false);
     }
   }
 
@@ -207,31 +483,35 @@ export default function Administracion() {
   return (
     <div>
       {apiError && <div className="alert alert-warning m-3">{apiError}</div>}
-    <div className="container my-5 text-white">
-      <h2 className="mb-4">Gestión del Sistema</h2>
-      {loadingData && <p className="text-secondary" role="status">Cargando datos desde MySQL...</p>}
+    <div className="container-fluid admin-container text-white py-4 px-3 px-xl-5">
+      <header className="admin-header mb-4">
+        <div>
+          <span className="admin-eyebrow">YAKARTA / CONTROL CENTRAL</span>
+          <h2 className="mb-1">Gestión del sistema</h2>
+          <p className="admin-header-subtitle mb-0">Administra el catálogo, las cuentas y las operaciones de tu tienda.</p>
+        </div>
+        <div className="admin-user-chip">
+          <span className="admin-user-avatar"><i className="bi bi-person-fill-gear" /></span>
+          <span><strong>{currentUser?.nombre || 'Administrador'}</strong><small>Sesión de administrador</small></span>
+        </div>
+      </header>
 
-      {/* Pestañas de Navegación */}
-      <ul className="nav nav-tabs mb-4">
-        <li className="nav-item">
-          <button type="button" className={`nav-link ${tab === 'dashboard' ? 'active' : ''}`} onClick={() => setTab('dashboard')}>Dashboard</button>
-        </li>
-        <li className="nav-item">
-          <button type="button" className={`nav-link ${tab === 'products' ? 'active' : ''}`} onClick={() => setTab('products')}>Productos</button>
-        </li>
-        <li className="nav-item">
-          <button type="button" className={`nav-link ${tab === 'categories' ? 'active' : ''}`} onClick={() => setTab('categories')}>Categorías</button>
-        </li>
-        <li className="nav-item">
-          <button type="button" className={`nav-link ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>
-        </li>
-        <li className="nav-item">
-          <button type="button" className={`nav-link ${tab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}>Órdenes / Boletas</button>
-        </li>
-        <li className="nav-item">
-          <button type="button" className={`nav-link ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>Perfil</button>
-        </li>
-      </ul>
+      <div className="admin-workspace">
+        <aside className="admin-sidebar" aria-label="Navegación de administración">
+          <span className="admin-sidebar-label">MENÚ PRINCIPAL</span>
+          <button type="button" className={`admin-nav-link ${tab === 'dashboard' ? 'active' : ''}`} onClick={() => setTab('dashboard')}><i className="bi bi-grid-1x2-fill" /><span>Resumen</span></button>
+          <button type="button" className={`admin-nav-link ${tab === 'products' ? 'active' : ''}`} onClick={() => setTab('products')}><i className="bi bi-controller" /><span>Juegos y productos</span><small>{products.length}</small></button>
+          <button type="button" className={`admin-nav-link ${tab === 'categories' ? 'active' : ''}`} onClick={() => setTab('categories')}><i className="bi bi-collection" /><span>Categorías</span></button>
+          <span className="admin-sidebar-label admin-sidebar-spaced">GESTIÓN DE TIENDA</span>
+          <button type="button" className={`admin-nav-link ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}><i className="bi bi-people-fill" /><span>Usuarios</span><small>{users.length}</small></button>
+          <button type="button" className={`admin-nav-link ${tab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}><i className="bi bi-receipt-cutoff" /><span>Órdenes y boletas</span><small>{orders.length}</small></button>
+          <span className="admin-sidebar-label admin-sidebar-spaced">CUENTA</span>
+          <button type="button" className={`admin-nav-link ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}><i className="bi bi-person-circle" /><span>Mi perfil</span></button>
+          <div className="admin-sidebar-footer"><i className="bi bi-shield-lock-fill" /><span>Acceso protegido<small>Panel de administración</small></span></div>
+        </aside>
+
+        <main className="admin-main">
+          {loadingData && <p className="text-secondary" role="status">Cargando datos desde MySQL...</p>}
 
       {/* 1. HOME / DASHBOARD */}
       {tab === 'dashboard' && (
@@ -288,6 +568,7 @@ export default function Administracion() {
                   <th>Imagen</th>
                   <th>Nombre</th>
                   <th>Categoría</th>
+                  <th>Plataformas</th>
                   <th>Stock</th>
                   <th>Precio</th>
                   <th className="text-center">Acciones</th>
@@ -295,10 +576,12 @@ export default function Administracion() {
               </thead>
               <tbody>
                 {displayedProducts.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center">No hay productos disponibles.</td></tr>
+                  <tr><td colSpan="7" className="text-center">No hay productos disponibles.</td></tr>
                 ) : (
-                  displayedProducts.map((product, index) => (
-                    <tr key={product?.id ?? `prod-${index}`}>
+                  displayedProducts.map((product) => {
+                    const productIndex = products.findIndex(item => item.id === product.id);
+                    return (
+                    <tr key={product?.id ?? `prod-${productIndex}`}>
                       <td>
                         <img
                           src={resolveProductImage(product?.imagen, '')}
@@ -310,18 +593,20 @@ export default function Administracion() {
                       </td>
                       <td>{product?.nombre || 'Sin Nombre'}</td>
                       <td>{product?.categoria || 'Sin Categoría'}</td>
+                      <td><div className="admin-table-platforms">{(product?.plataformas?.length ? product.plataformas : ['PC']).map(platform => <span key={platform}>{platform}</span>)}</div></td>
                       <td><span className={`badge ${product?.stock < 5 ? 'bg-danger' : 'bg-success'}`}>{product?.stock ?? 10}</span></td>
                       <td>{typeof formatCLP === 'function' ? formatCLP(product?.precio) : `$${product?.precio}`}</td>
                       <td className="text-center">
-                        <button type="button" className="btn btn-sm btn-outline-warning me-1" onClick={() => openProduct(index)}>
+                        <button type="button" className="btn btn-sm btn-outline-warning me-1" onClick={() => openProduct(productIndex)}>
                           <i className="bi bi-pencil" /> Editar
                         </button>
-                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => confirmRemoveProduct(index)}>
+                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => confirmRemoveProduct(productIndex)}>
                           <i className="bi bi-trash" /> Eliminar
                         </button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -506,54 +791,89 @@ export default function Administracion() {
         </div>
       )}
 
+        </main>
+      </div>
+
       {/* MODAL PRODUCTO */}
       {Boolean(productModal) && (
         <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-          <div className="modal-dialog">
-            <div className="modal-content bg-dark text-white">
-              <form onSubmit={submitProduct}>
+          <div className="modal-dialog modal-xl modal-dialog-scrollable">
+            <form className="modal-content admin-product-modal admin-product-form" onSubmit={submitProduct}>
                 <div className="modal-header">
-                  <h5 className="modal-title">{productModal?.index === null ? 'Nuevo Producto' : 'Editar Producto'}</h5>
-                  <button type="button" className="btn-close btn-close-white" onClick={() => setProductModal(null)} aria-label="Cerrar" />
+                  <div><span className="admin-eyebrow">CATÁLOGO / FICHA DE JUEGO</span><h5 className="modal-title">{productModal?.index === null ? 'Agregar nuevo juego' : 'Editar juego'}</h5></div>
+                  <button type="button" className="btn-close btn-close-white" onClick={() => setProductModal(null)} aria-label="Cerrar" disabled={uploadingImages > 0 || savingProduct} />
                 </div>
                 <div className="modal-body">
-                  <div className="mb-3">
-                    <label htmlFor="prodNombre" className="form-label">Nombre del Juego</label>
-                    <input name="nombre" defaultValue={productModal?.nombre || ''} id="prodNombre" className="form-control" required />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="prodPrecio" className="form-label">Precio ($ CLP)</label>
-                    <input name="precio" defaultValue={productModal?.precio || ''} id="prodPrecio" type="number" className="form-control" required />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="prodStock" className="form-label">Stock Actual</label>
-                    <input name="stock" defaultValue={productModal?.stock ?? 10} id="prodStock" type="number" className="form-control" required />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="prodPrecioOferta" className="form-label">Precio de oferta (opcional)</label>
-                    <input name="precioOferta" defaultValue={productModal?.precioOferta || ''} id="prodPrecioOferta" type="number" min="0" className="form-control" placeholder="Ej: 12000" />
-                    <div className="form-check mt-2">
-                      <input name="enOferta" defaultChecked={Boolean(productModal?.enOferta)} id="prodEnOferta" type="checkbox" className="form-check-input" />
-                      <label htmlFor="prodEnOferta" className="form-check-label">Marcar como juego en oferta</label>
+                  <div className="row g-4">
+                    <div className="col-lg-7">
+                      <section className="admin-form-section">
+                        <h6><i className="bi bi-card-text me-2" />Información del juego</h6>
+                        <div className="row g-3">
+                          <div className="col-md-8"><label htmlFor="prodNombre" className="form-label">Nombre del juego</label><input name="nombre" defaultValue={productModal?.nombre || ''} id="prodNombre" className="form-control" required maxLength="160" /></div>
+                          <div className="col-md-4"><label htmlFor="prodCategoria" className="form-label">Categoría</label><select name="categoria" defaultValue={productModal?.categoria || categories[0] || ''} id="prodCategoria" className="form-select" required>{categories.map((c, i) => <option key={i} value={c}>{c}</option>)}</select></div>
+                          <div className="col-md-4"><label htmlFor="prodPrecio" className="form-label">Precio (CLP)</label><input name="precio" defaultValue={productModal?.precio ?? ''} id="prodPrecio" type="number" min="1" className="form-control" required /></div>
+                          <div className="col-md-4"><label htmlFor="prodStock" className="form-label">Stock actual</label><input name="stock" defaultValue={productModal?.stock ?? 10} id="prodStock" type="number" min="0" className="form-control" required /></div>
+                          <div className="col-md-4"><label htmlFor="prodPrecioOferta" className="form-label">Precio de oferta</label><input name="precioOferta" defaultValue={productModal?.precioOferta ?? ''} id="prodPrecioOferta" type="number" min="0" className="form-control" placeholder="Opcional" /></div>
+                          <div className="col-12"><div className="form-check admin-sale-check"><input name="enOferta" defaultChecked={Boolean(productModal?.enOferta)} id="prodEnOferta" type="checkbox" className="form-check-input" /><label htmlFor="prodEnOferta" className="form-check-label">Marcar como juego en oferta</label></div></div>
+                          <div className="col-12"><label htmlFor="prodDescripcion" className="form-label">Descripción personalizada</label><textarea name="descripcion" value={productModal?.descripcion || ''} onChange={event => updateProductDraft('descripcion', event.target.value)} id="prodDescripcion" className="form-control" rows="5" maxLength="3000" placeholder="Describe el juego, su historia, características o modos de juego..." /><small className="admin-field-help">Esta descripción aparecerá en la ficha de vista previa de la tienda.</small></div>
+                          <div className="col-12"><label htmlFor="prodImagen" className="form-label">Imagen principal / portada</label><input name="imagen" value={productModal?.imagen || ''} onChange={event => updateProductDraft('imagen', event.target.value)} id="prodImagen" className="form-control" placeholder="https://... o /uploads/productos/portada.jpg" required disabled={savingProduct || uploadingImages > 0} /><div className="admin-cover-upload-row"><label className="admin-file-picker"><i className="bi bi-cloud-arrow-up me-2" />Subir portada desde el equipo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleCoverUpload} disabled={uploadingImages > 0 || savingProduct} /></label>{productModal?.imagen && <img src={resolveProductImage(productModal.imagen, '')} alt="Vista previa de portada" onError={event => { event.currentTarget.style.visibility = 'hidden'; }} />}</div><small className="admin-field-help">Pega una URL pública o una ruta del servidor (/uploads/...). Para imágenes de tu PC, usa el botón de subida (JPG, PNG, WEBP o GIF; máximo 8 MB).</small></div>
+                        </div>
+                      </section>
+
+                      <section className="admin-form-section mt-4">
+                        <div className="admin-form-section-heading"><h6><i className="bi bi-images me-2" />Imágenes de previsualización</h6><div className="admin-gallery-actions"><label className={`admin-file-picker admin-gallery-file-picker ${uploadingImages > 0 || savingProduct ? 'disabled' : ''}`}><i className="bi bi-cloud-upload me-2" />Subir desde el equipo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={handlePreviewFilesUpload} disabled={uploadingImages > 0 || savingProduct || (productModal?.imagenesPreview || []).filter(value => String(value || '').trim()).length >= 12} /></label><button type="button" className="btn admin-add-image-btn" onClick={addPreviewImage} disabled={(productModal?.imagenesPreview || []).length >= 12 || uploadingImages > 0 || savingProduct}><i className="bi bi-plus-lg me-1" />Agregar URL</button></div></div>
+                        <p className="admin-field-help mb-3">Sube una o varias imágenes desde tu computador o pega una URL/ruta pública. Las rutas locales como C:\Users\... solo existen en tu PC: para que aparezcan en la tienda debes subir esos archivos al servidor.</p>
+                        <div className="admin-image-list">
+                          {(productModal?.imagenesPreview || []).map((image, index) => (
+                            <div className="admin-image-row" key={`preview-${index}`}>
+                              <span className="admin-image-index">{String(index + 1).padStart(2, '0')}</span>
+                              <input name="imagenesPreview" value={image} onChange={event => updatePreviewImage(index, event.target.value)} className="form-control" disabled={savingProduct || uploadingImages > 0} aria-label={`URL de imagen ${index + 1}`} placeholder="URL pública, /uploads/... o imgtienda/..." maxLength="1000" />
+                              {image && <img src={resolveProductImage(image, '')} alt={`Vista previa ${index + 1}`} onError={event => { event.currentTarget.style.visibility = 'hidden'; }} />}
+                              <label className="admin-image-upload-btn" title="Subir archivo de imagen"><i className="bi bi-upload" /><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={event => handlePreviewUpload(index, event)} disabled={uploadingImages > 0 || savingProduct} /></label>
+                              <button type="button" className="admin-remove-image-btn" onClick={() => removePreviewImage(index)} aria-label={`Quitar imagen ${index + 1}`} disabled={uploadingImages > 0 || savingProduct}><i className="bi bi-trash3" /></button>
+                            </div>
+                          ))}
+                          {(!productModal?.imagenesPreview || productModal.imagenesPreview.length === 0) && <div className="admin-empty-images"><i className="bi bi-image" /><span>Aún no agregas capturas. Usa “Agregar imagen” para crear la galería.</span></div>}
+                        </div>
+                        <button type="button" className="btn admin-add-image-btn admin-add-image-bottom" onClick={addPreviewImage} disabled={(productModal?.imagenesPreview || []).length >= 12 || uploadingImages > 0 || savingProduct}>
+                          <i className="bi bi-plus-lg me-1" />Agregar otra imagen ({(productModal?.imagenesPreview || []).length}/12)
+                        </button>
+                      </section>
                     </div>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="prodCategoria" className="form-label">Categoría</label>
-                    <select name="categoria" defaultValue={productModal?.categoria || categories[0]} id="prodCategoria" className="form-select">
-                      {categories.map((c, i) => <option key={i} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="prodImagen" className="form-label">Ruta de Imagen</label>
-                    <input name="imagen" defaultValue={productModal?.imagen || ''} id="prodImagen" className="form-control" placeholder="imgtienda/juego.jpg" required />
+
+                    <div className="col-lg-5">
+                      <section className="admin-form-section admin-platform-section">
+                        <h6><i className="bi bi-controller me-2" />Plataformas disponibles</h6>
+                        <p className="admin-field-help">Selecciona una o varias plataformas compatibles. Estas etiquetas aparecerán en la vista previa de la tienda.</p>
+                        <div className="admin-platform-grid">
+                          {PLATFORM_OPTIONS.map(platform => (
+                            <label key={platform} className={`admin-platform-option ${(productModal?.plataformas || []).includes(platform) ? 'selected' : ''}`}>
+                              <input type="checkbox" name="plataformas" value={platform} checked={(productModal?.plataformas || []).includes(platform)} onChange={event => togglePlatform(platform, event.target.checked)} disabled={savingProduct || uploadingImages > 0} />
+                              <span className="admin-platform-check"><i className="bi bi-check2" /></span>
+                              <span className="admin-platform-name">{platform === 'PC' ? <><i className="bi bi-pc-display me-2" />{platform}</> : <><i className="bi bi-controller me-2" />{platform}</>}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="admin-platform-summary">
+                          <small>ETIQUETAS SELECCIONADAS</small>
+                          {(productModal?.plataformas || []).length ? <div>{productModal.plataformas.map(platform => <span key={platform}>{platform}</span>)}</div> : <p className="mb-0">Selecciona al menos una plataforma.</p>}
+                        </div>
+                      </section>
+                      <section className="admin-preview-hint mt-4">
+                        <i className="bi bi-eye" />
+                        <div><strong>Vista previa en la tienda</strong><p className="mb-0">La ficha del juego mostrará la descripción personalizada, la galería de capturas y las etiquetas de todas las plataformas seleccionadas.</p></div>
+                      </section>
+                    </div>
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setProductModal(null)}>Cancelar</button>
-                  <button type="submit" className="btn btn-primary">Guardar Producto</button>
+                  {uploadingImages > 0 && <span className="admin-upload-status"><i className="bi bi-arrow-repeat" /> Subiendo {uploadingImages} imagen(es)...</span>}
+                  <button type="button" className="btn btn-outline-light" onClick={() => setProductModal(null)} disabled={uploadingImages > 0 || savingProduct}>Cancelar</button>
+                  <button type="submit" className="btn admin-save-product-btn" disabled={uploadingImages > 0 || savingProduct}>
+                    {savingProduct ? <><i className="bi bi-arrow-repeat me-2 admin-save-spinner" />Guardando...</> : <><i className="bi bi-check2-circle me-2" />{productModal?.index === null ? 'Crear juego' : 'Guardar cambios'}</>}
+                  </button>
                 </div>
-              </form>
-            </div>
+            </form>
           </div>
         </div>
       )}
