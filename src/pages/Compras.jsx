@@ -76,7 +76,7 @@ export default function Compras() {
       const sender = result.sender ? ` Remitente: ${result.sender}.` : '';
       const messageId = result.messageId ? ` Identificador del mensaje: ${result.messageId}.` : '';
       setReceiptEmailMessage(
-        `Se envio el correo a: ${recipient} Revisa Spam, Promociones, Todos los correos y la carpeta Enviados del remitente`
+        `El servidor SMTP aceptó el correo para ${recipient}.${sender} Esto confirma la aceptación del servidor, no la llegada a Recibidos. Revisa Spam, Promociones, Todos los correos y la carpeta Enviados del remitente.${messageId}`
       );
     } catch (err) {
       setReceiptEmailError(err.message || 'No se pudo enviar la boleta.');

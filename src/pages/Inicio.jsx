@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+// Cada destacado apunta al nombre REAL del producto registrado en el catálogo.
+// Así los títulos promocionales pueden diferir del nombre usado en MySQL.
 const featuredGames = [
-  { title: 'Midnight Club: Los Angeles', category: 'Carreras', image: '/imgtienda/Midnight_Club-Los_Angeles.jpg', description: 'Corre por la ciudad y construye tu reputación.', to: '/midnight-club' },
-  { title: 'FIFA Street', category: 'Deportes', image: '/imgtienda/fifastreet.jpg', description: 'El fútbol callejero, sin reglas y con estilo.', to: '/tienda' },
-  { title: 'Dead by Daylight', category: 'Terror', image: '/imgtienda/dbd.jpg', description: 'Sobrevive a la noche o conviértete en la pesadilla.', to: '/blogs/dead-by-daylight' },
-  { title: 'Need for Speed', category: 'Carreras', image: '/imgtienda/nfs shift.jpg', description: 'Velocidad, persecuciones y adrenalina.', to: '/blogs/need-for-speed-shift' },
-  { title: 'Grand Theft Auto', category: 'Acción', image: '/imgtienda/gta6.webp', description: 'Explora mundos abiertos llenos de posibilidades.', to: '/tienda' },
-  { title: 'Red Dead Redemption 2', category: 'Aventura', image: '/imgtienda/rdr2.webp', description: 'Una aventura épica en el salvaje oeste.', to: '/tienda' },
+  { title: 'Midnight Club: Los Angeles', productName: 'Midnight club', category: 'Carreras', image: '/imgtienda/Midnight_Club-Los_Angeles.jpg', description: 'Corre por la ciudad y construye tu reputación.' },
+  { title: 'FIFA Street', productName: 'Fifa street 2', category: 'Deportes', image: '/imgtienda/fifastreet.jpg', description: 'El fútbol callejero, sin reglas y con estilo.' },
+  { title: 'Dead by Daylight', productName: 'Dead by daylight', category: 'Terror', image: '/imgtienda/dbd.jpg', description: 'Sobrevive a la noche o conviértete en la pesadilla.' },
+  { title: 'Need for Speed', productName: 'NFS: shift', category: 'Carreras', image: '/imgtienda/nfs shift.jpg', description: 'Velocidad, persecuciones y adrenalina.' },
+  { title: 'Grand Theft Auto', productName: 'GTA VI', category: 'Acción', image: '/imgtienda/gta6.webp', description: 'Explora mundos abiertos llenos de posibilidades.' },
+  { title: 'Red Dead Redemption 2', productName: 'Red dead redemption 2', category: 'Aventura', image: '/imgtienda/rdr2.webp', description: 'Una aventura épica en el salvaje oeste.' },
 ];
 
 export default function Inicio() {
@@ -69,7 +71,7 @@ export default function Inicio() {
                 <span className="featured-category">{game.category}</span>
                 <h3>{game.title}</h3>
                 <p>{game.description}</p>
-                <Link to={game.to} className="featured-link">Descubrir <i className="bi bi-arrow-up-right ms-1" /></Link>
+                <Link to={`/tienda?juego=${encodeURIComponent(game.productName)}`} className="featured-link">Descubrir <i className="bi bi-arrow-up-right ms-1" /></Link>
               </div>
             </article>
           ))}

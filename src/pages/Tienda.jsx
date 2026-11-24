@@ -44,10 +44,18 @@ export default function Tienda() {
   }, []);
 
   useEffect(() => {
-    const requested = searchParams.get('juego');
-    if (!requested) return;
-    const found = products.find((product) => normalize(product.nombre).includes(normalize(requested)) || normalize(requested).includes(normalize(product.nombre)));
-    if (found) { setSelectedProduct(found); setActiveShot(0); }
+    const requested = normalize(searchParams.get('juego') || '');
+    if (!requested || !products.length) return;
+
+    // Prioriza la coincidencia exacta para evitar abrir otro producto con un
+    // nombre parecido; la coincidencia parcial queda como compatibilidad.
+    const found = products.find((product) => normalize(product.nombre) === requested)
+      || products.find((product) => normalize(product.nombre).includes(requested));
+
+    if (found) {
+      setSelectedProduct(found);
+      setActiveShot(0);
+    }
   }, [products, searchParams]);
 
   const categories = useMemo(() => ['Todas', ...new Set(products.map((product) => product.categoria || 'Otros'))], [products]);

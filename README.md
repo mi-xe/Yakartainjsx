@@ -108,3 +108,8 @@ El botón **Enviar boleta por correo** se muestra solo cuando `GET /api/auth/me`
 ### Envío de boletas por correo
 
 La interfaz solo muestra una confirmación informativa cuando el backend devuelve `acceptedBySmtp: true`. El mensaje identifica el destinatario, el remitente y el `Message-ID`. La aceptación SMTP no garantiza que el proveedor coloque el mensaje en Recibidos: revisar Spam, Promociones, Todos los correos y la carpeta Enviados de la cuenta emisora.
+
+
+## Plataformas del catálogo
+
+El formulario de administración permite asignar varias plataformas por producto. Las opciones incluyen `PlayStation 2` y `PSP`, además de las plataformas ya existentes. La API valida las mismas opciones antes de guardar.

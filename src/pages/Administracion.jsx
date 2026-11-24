@@ -6,9 +6,11 @@ import { findLegacyDescription, findLegacyPreviewImages } from '../lib/catalogMe
 
 const PLATFORM_OPTIONS = [
   'PC',
+  'PlayStation 2',
   'PlayStation 3',
   'PlayStation 4',
   'PlayStation 5',
+  'PSP',
   'Xbox Series S/X',
   'Nintendo Switch',
   'Nintendo Switch 2',
